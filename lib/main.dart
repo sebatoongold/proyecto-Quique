@@ -2,17 +2,17 @@
 // main.dart
 // Fecha: 11-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso C1 (tema visual)
+// Versión: v3 — paso C3 (dos mundos)
 //
-// CAMBIOS v2 respecto a la v1 (versión del respaldo de GitHub):
-//  - Se aplica el tema de la guía de marca (tema/tema_app.dart).
-//  - Se agrega el título de la app.
-//  La pantalla de inicio sigue siendo PosturaScreen, sin cambios.
+// CAMBIOS v3 respecto a la v2:
+//  - La pantalla de inicio ahora es PantallaPrincipal (los dos mundos
+//    con su barra inferior). La pantalla "Datos del sensor" sigue
+//    disponible desde el engranaje del mundo apoderado.
 // ============================================================
 
 import 'package:flutter/material.dart';
 
-import 'screens/postura_screen.dart';
+import 'screens/pantalla_principal.dart';
 import 'tema/tema_app.dart';
 
 void main() {
@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Quique',
       theme: TemaApp.claro,
-      home: const PosturaScreen(),
+      home: const PantallaPrincipal(),
     );
   }
 }
