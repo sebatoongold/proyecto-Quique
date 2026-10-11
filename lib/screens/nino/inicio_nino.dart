@@ -2,11 +2,12 @@
 // inicio_nino.dart
 // Fecha: 11-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso C3 (inicio provisorio del mundo niño)
+// Versión: v2 — paso C4
 //
-// Esqueleto: Quique (marcador provisorio) saluda y hay un botón grande
-// para jugar. El juego llega en el paso C4; el mundo de Quique, los
-// juegos de hoy y "Mi río" llegan en el paso C6.
+// CAMBIOS v2 respecto a la v1:
+//  - El botón "Jugar" abre el juego de prueba «Imita a Quique»
+//    (ejecucion_screen.dart), con la figura «Tú» en vivo.
+// El mundo de Quique, los juegos de hoy y "Mi río" llegan en el paso C6.
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import 'package:flutter/material.dart';
 import '../../datos_ejemplo.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
+import 'ejecucion_screen.dart';
 
 class InicioNino extends StatelessWidget {
   const InicioNino({super.key});
@@ -57,11 +59,10 @@ class InicioNino extends StatelessWidget {
                     style: FilledButton.styleFrom(minimumSize: const Size(64, 64)),
                     icon: const Icon(Icons.play_arrow_rounded, size: 30),
                     label: const Text('Jugar'),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('El juego llega en el paso C4.')),
-                      );
-                    },
+                    // El juego se abre a pantalla completa, sin la barra de mundos.
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const EjecucionScreen()),
+                    ),
                   ),
                 ],
               ),
