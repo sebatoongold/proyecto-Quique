@@ -1,21 +1,30 @@
 // ============================================================
 // postura_screen.dart
-// Pantalla que se conecta al ESP32 sensor por BLE, escucha las
-// notificaciones del ángulo (X e Y), y las muestra en pantalla.
-// Este es el paso previo a dibujar el avatar - primero hay que
-// tener el dato llegando de forma confiable.
+// Fecha: 11-10-2026
+// Proyecto: "La espalda no espera" — app Quique
+// Versión: v2 — paso C2 (usa el servicio de Bluetooth)
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Ya no se conecta por su cuenta: usa ServicioBle
+//    (servicios/servicio_ble.dart). Toda la lógica de Bluetooth salió
+//    de este archivo.
+//  - Al salir de la pantalla NO se desconecta: la conexión vive en el
+//    servicio y sigue activa para las demás pantallas.
+//  - Muestra todos los datos del firmware v7: ángulos del cuello,
+//    inclinación hacia adelante/atrás y hacia los lados con su
+//    dirección, y si hay mala postura.
+//
+// Para qué sirve ahora: es una pantalla de PRUEBA ("datos del
+// sensor"), útil para verificar la conexión y calibrar. Más adelante
+// quedará dentro de Configuración, en el mundo del apoderado.
 // ============================================================
 
-import 'dart:convert'; // jsonDecode() - viene incluido en Dart, no hay que agregarlo a pubspec.yaml
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 
-// --- Deben ser IDÉNTICOS a los que definiste en el .ino ---
-// (mayúsculas/minúsculas no importan en UUIDs, pero los números sí)
-const String SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-const String CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
-const String NOMBRE_DISPOSITIVO = "ESP32_Sensor_Postura";
+import '../modelos/datos_postura.dart';
+import '../servicios/servicio_ble.dart';
+import '../tema/colores.dart';
+import '../tema/tema_app.dart';
 
 class PosturaScreen extends StatefulWidget {
   const PosturaScreen({super.key});
@@ -25,155 +34,124 @@ class PosturaScreen extends StatefulWidget {
 }
 
 class _PosturaScreenState extends State<PosturaScreen> {
-  // Variables de estado: cada vez que cambian y llamamos a setState(),
-  // Flutter vuelve a dibujar la pantalla automáticamente.
-  String estadoConexion = "Desconectado";
-  int anguloX = 90; // valor neutro inicial, antes de recibir el primer dato real
-  int anguloY = 90;
-
-  BluetoothDevice? dispositivoConectado;
+  final ServicioBle ble = ServicioBle.instancia;
 
   @override
   void initState() {
     super.initState();
-    _iniciarProceso();
+    ble.iniciar(); // si ya estaba conectado, no hace nada
   }
 
-  // Es importante cerrar la conexión BLE si el usuario sale de esta
-  // pantalla, o el ESP32 puede quedar "pensando" que sigue conectado.
-  @override
-  void dispose() {
-    dispositivoConectado?.disconnect();
-    super.dispose();
-  }
-
-  Future<void> _iniciarProceso() async {
-    await _pedirPermisos();
-    await _escanearYConectar();
-  }
-
-  Future<void> _pedirPermisos() async {
-    await [
-      Permission.bluetoothScan,
-      Permission.bluetoothConnect,
-      Permission.locationWhenInUse,
-    ].request();
-  }
-
-  Future<void> _escanearYConectar() async {
-    setState(() => estadoConexion = "Buscando ESP32_Sensor_Postura...");
-
-    // withNames filtra el escaneo para que solo nos avise de
-    // dispositivos con ese nombre exacto - evita procesar de más
-    // si hay otros dispositivos BLE cerca (audífonos, etc.)
-    FlutterBluePlus.startScan(
-      withNames: [NOMBRE_DISPOSITIVO],
-      timeout: const Duration(seconds: 8),
-    );
-
-    // scanResults es un "Stream" - una especie de cañería de datos
-    // que va entregando resultados a medida que aparecen, no todos
-    // de una vez. listen() se ejecuta cada vez que hay resultados nuevos.
-    FlutterBluePlus.scanResults.listen((resultados) async {
-      for (ScanResult r in resultados) {
-        if (r.device.platformName == NOMBRE_DISPOSITIVO) {
-          await FlutterBluePlus.stopScan(); // ya lo encontramos, dejamos de buscar
-          await _conectar(r.device);
-          break;
-        }
-      }
-    });
-  }
-
-  Future<void> _conectar(BluetoothDevice device) async {
-    setState(() => estadoConexion = "Conectando...");
-
-    try {
-      await device.connect();
-      dispositivoConectado = device;
-
-      // discoverServices() le pregunta al ESP32 "¿qué servicios y
-      // características tienes?" - es el equivalente en código a lo
-      // que veías visualmente en la app nRF Connect.
-      List<BluetoothService> servicios = await device.discoverServices();
-
-      for (BluetoothService servicio in servicios) {
-        // Comparamos en minúsculas porque a veces un lado entrega
-        // el UUID en mayúsculas y el otro en minúsculas - son el
-        // mismo UUID, pero la comparación de texto es sensible a eso.
-        if (servicio.uuid.toString().toLowerCase() == SERVICE_UUID) {
-          for (BluetoothCharacteristic caracteristica
-              in servicio.characteristics) {
-            if (caracteristica.uuid.toString().toLowerCase() ==
-                CHARACTERISTIC_UUID) {
-              await _suscribirseANotificaciones(caracteristica);
-            }
-          }
-        }
-      }
-    } catch (e) {
-      setState(() => estadoConexion = "Error al conectar: $e");
+  String _textoEstado(EstadoConexion e) {
+    switch (e) {
+      case EstadoConexion.desconectado:
+        return 'Desconectado. Reintentando…';
+      case EstadoConexion.buscando:
+        return 'Buscando el wearable…';
+      case EstadoConexion.conectando:
+        return 'Conectando…';
+      case EstadoConexion.conectado:
+        return 'Conectado ✔';
+      case EstadoConexion.error:
+        return 'No se pudo conectar. Reintentando…';
     }
-  }
-
-  Future<void> _suscribirseANotificaciones(
-      BluetoothCharacteristic caracteristica) async {
-    // Esto es el equivalente en código al ícono de "tres flechas"
-    // que tocaste en nRF Connect - activa las notificaciones.
-    await caracteristica.setNotifyValue(true);
-
-    setState(() => estadoConexion = "Conectado ✔");
-
-    // lastValueStream también es un Stream: cada vez que el ESP32
-    // manda un notify(), un valor nuevo aparece aquí automáticamente.
-    caracteristica.lastValueStream.listen((valor) {
-      // 'valor' llega como una lista de bytes (List<int>), igual que
-      // viste en nRF Connect el "0x7B-22-78-22..." en hexadecimal.
-      // utf8.decode() lo convierte de vuelta a texto legible.
-      String textoRecibido = utf8.decode(valor);
-
-      try {
-        // Convertimos el texto '{"x":87,"y":102}' en un Map de Dart
-        // que podemos leer como si fuera un diccionario.
-        Map<String, dynamic> datos = jsonDecode(textoRecibido);
-
-        setState(() {
-          anguloX = datos['x'];
-          anguloY = datos['y'];
-        });
-      } catch (e) {
-        // Si llega un dato incompleto o corrupto (puede pasar
-        // ocasionalmente con BLE), lo ignoramos en vez de que la
-        // app se caiga - simplemente esperamos el próximo valor.
-        debugPrint("Dato BLE no se pudo interpretar: $textoRecibido");
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Postura en vivo')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              estadoConexion,
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+      appBar: AppBar(title: const Text('Datos del sensor')),
+      // ListenableBuilder redibuja esta parte cada vez que cambia el
+      // estado de la conexión o llega un dato nuevo.
+      body: ListenableBuilder(
+        listenable: Listenable.merge([ble.estado, ble.datos]),
+        builder: (context, _) {
+          final DatosPostura? d = ble.datos.value;
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              // Responsive: en tablet el contenido no se estira de lado a lado.
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      _textoEstado(ble.estado.value),
+                      textAlign: TextAlign.center,
+                      style: Textos.secundario,
+                    ),
+                    if (ble.ultimoError != null &&
+                        ble.estado.value == EstadoConexion.error) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        ble.ultimoError!,
+                        textAlign: TextAlign.center,
+                        style: Textos.secundario.copyWith(fontSize: 12),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    if (d == null)
+                      const Text(
+                        'Esperando datos…',
+                        textAlign: TextAlign.center,
+                        style: Textos.cuerpo,
+                      )
+                    else ...[
+                      _tarjeta(
+                        'Mala postura',
+                        d.malaPostura ? 'Sí' : 'No',
+                        color: d.malaPostura ? Colores.ambar : Colores.comodo,
+                      ),
+                      _tarjeta(
+                        'Adelante / atrás',
+                        _conDireccion(d.adelante, 'adelante', 'atrás'),
+                      ),
+                      _tarjeta(
+                        'Hacia los lados',
+                        _conDireccion(d.lateral, 'derecha', 'izquierda'),
+                      ),
+                      _tarjeta('Cuello X / Y', '${d.x} / ${d.y}'),
+                      if (!d.conDireccion)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 8),
+                          child: Text(
+                            'El wearable tiene un firmware anterior a v7: no envía la dirección.',
+                            textAlign: TextAlign.center,
+                            style: Textos.secundario,
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 32),
-            Text(
-              'Ángulo X: $anguloX°',
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Ángulo Y: $anguloY°',
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Ej.: 12 -> "12 hacia adelante", -5 -> "5 hacia atrás", 0 -> "0 (centro)".
+  String _conDireccion(int valor, String positivo, String negativo) {
+    if (valor == 0) return '0 (centro)';
+    return valor > 0 ? '$valor hacia $positivo' : '${-valor} hacia $negativo';
+  }
+
+  Widget _tarjeta(String titulo, String valor, {Color? color}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colores.tarjeta,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color ?? Colores.linea, width: color == null ? 1 : 2),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: Text(titulo, style: Textos.secundario)),
+          Text(valor, style: Textos.cuerpoDestacado.copyWith(fontSize: 18)),
+        ],
       ),
     );
   }
