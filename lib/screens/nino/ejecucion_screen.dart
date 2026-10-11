@@ -2,34 +2,29 @@
 // ejecucion_screen.dart
 // Fecha: 11-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso C4, corrección tras la primera prueba física
+// Versión: v3 — paso D2 (actividad guiada completa + métricas)
 //
-// CAMBIOS v2 respecto a la v1:
-//  - La pose se evalúa POR EJE, con los márgenes de cada pose
-//    (pose.dart), en vez de una sola distancia que mezclaba lateral y
-//    encorvamiento. Los márgenes son más amplios.
-//  - Quique dice QUÉ corregir y hacia dónde: "un poquito más hacia tu
-//    izquierda", "endereza un poquito la espalda", etc. Es la única
-//    forma de avisar el encorvamiento, que de frente no se dibuja.
-//  - La figura muestra la zona de la pose (cuña clara).
-//  - Postura de partida: además de estar quieto, el firmware no debe
-//    marcar mala postura (evita guardar un "cero" encorvado).
-//  - Datos de prueba en pantalla (números), para calibrar en las
-//    pruebas. Se apagan con "mostrarDatosDePrueba".
+// CAMBIOS v3 respecto a la v2:
+//  - Antes de cada pose aparecen las VIÑETAS (cómo empezar, el paso y
+//    la pose final) y el niño toca "¡Vamos!" cuando está listo.
+//  - Durante la pose hay una miniatura de la pose objetivo; a los 20 s
+//    sin avance se DESTACA (pista) y Quique dice hacia dónde moverse.
+//  - Al minuto sin completar, Quique OFRECE AYUDA: seguir intentando,
+//    saltar la pose, o volver al río. Nunca se siente como fracaso.
+//  - Sin cinturón: botón "Pedir ayuda a un adulto" (con pasos para el
+//    adulto) y "Volver al río".
+//  - El botón "atrás" del teléfono abre "¿Seguimos después?" en vez de
+//    salir de golpe.
+//  - CIERRE según cómo terminó: "¡Muy bien hecho!" (todo completado) o
+//    "¡Buen intento! La próxima lo logramos juntos" (saltó alguna), con
+//    la racha de días.
+//  - Se GUARDAN las métricas de cada juego en el teléfono
+//    (modelos/registro_juego.dart, servicios/almacenamiento_juegos.dart):
+//    al terminar, al salir o al saltar al río.
 //
-// Versión mínima del flujo de la actividad guiada (fases 2, 3 y 5):
-//  1. POSTURA DE PARTIDA: el niño se sienta derecho y se queda quieto
-//     2 segundos. Esa postura se guarda como su "postura cero" (una
-//     calibración provisoria, hasta que exista la calibración real).
-//  2. POSES: para cada pose, la figura «Tú» se mueve en vivo sobre la
-//     silueta objetivo. Dentro de la zona, el avance se llena; si
-//     sale, el avance se CONGELA (no se reinicia).
-//  3. CIERRE: "¡Muy bien hecho!", con "Otra vez" o "Volver".
-// Si el cinturón se desconecta, todo se pausa solo y Quique espera.
-//
-// Quique aparece como un marcador provisorio (ícono de carita), hasta
-// tener sus ilustraciones. Todavía NO están: viñetas, pistas a los
-// 20 s, ayuda al minuto, ni guardado de datos (pasos siguientes).
+// Flujo completo: flujo_nino_actividad_guiada_v1.svg. Sigue pendiente:
+// el botón "Escuchar" (requiere una dependencia de voz) y las
+// ilustraciones de Quique (por ahora, marcador con carita).
 // ============================================================
 
 import 'dart:math' as math;
@@ -39,10 +34,13 @@ import 'package:flutter/scheduler.dart';
 
 import '../../modelos/datos_postura.dart';
 import '../../modelos/pose.dart';
+import '../../modelos/registro_juego.dart';
+import '../../servicios/almacenamiento_juegos.dart';
 import '../../servicios/servicio_ble.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/figura_tu.dart';
+import '../../widgets/vinetas_pose.dart';
 
 // ############################################################
 // ##  PARÁMETROS AJUSTABLES DEL JUEGO                       ##
@@ -52,23 +50,29 @@ const double segundosParaCompletar = 10;
 // Los márgenes de cada pose están en modelos/pose.dart.
 // "Cerca" = dentro de este múltiplo del margen (Quique un poco incómodo).
 const double factorCerca = 1.8;
-// Muestra números de prueba sobre la figura (útil para calibrar).
-// Poner en false para el testeo con niños.
-const bool mostrarDatosDePrueba = true;
 // Salidas de la zona más cortas que esto se ignoran (ruido del sensor).
 const double graciaSalida = 0.5;
 // Postura de partida: cuánto rato quieto y cuánta variación se permite.
 const double segundosPartidaQuieto = 2;
 const double toleranciaQuieto = 4;
-// Suavizado de la figura: los datos llegan ~3 veces por segundo; sin
-// suavizar, la figura saltaría. Más alto = sigue más rápido, menos suave.
+// Suavizado de la figura (más alto = sigue más rápido, menos suave).
 const double velocidadSuavizado = 8;
 // Duración de la celebración breve al completar una pose.
 const double segundosCelebracion = 1.5;
+// Ayudas (flujo, fase 3): pista y ofrecimiento de ayuda.
+const double segundosSinAvanceParaPista = 20;
+const double segundosParaOfrecerAyuda = 60;
+// Identificador del juego en los registros guardados.
+const String idJuego = 'imita_a_quique';
+// Muestra números de prueba sobre la figura (útil para calibrar).
+// Poner en false para el testeo con niños.
+const bool mostrarDatosDePrueba = true;
 
-enum _Fase { partida, pose, logrado, fin }
+enum _Fase { partida, explicacion, pose, logrado, fin }
 
 enum _Comodidad { comodo, pocoIncomodo, incomodo }
+
+enum _OpcionAyuda { seguir, saltar, volverAlRio }
 
 class _Muestra {
   final double t, adelante, lateral;
@@ -88,8 +92,6 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     with SingleTickerProviderStateMixin {
   final ServicioBle ble = ServicioBle.instancia;
 
-  // Un "ticker" llama a _alTick en cada cuadro de la pantalla (~60 veces
-  // por segundo): ahí se suaviza la figura y se cuenta el tiempo.
   late final Ticker _ticker;
   double _t = 0; // segundos desde que se abrió la pantalla
 
@@ -112,15 +114,33 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   final List<_Muestra> _muestras = [];
   double _ultimoDentro = -100;
   _Comodidad _comodidad = _Comodidad.incomodo;
-  String _pista = ''; // qué corregir, lo dice Quique
-  double _errorLateral = 0; // para los datos de prueba
+  String _pista = '';
+  double _errorLateral = 0;
   double _errorAdelante = 0;
 
+  // Seguimiento de la pose actual (para ayudas y métricas).
+  double _tiempoEnPose = 0; // solo cuenta con conexión y sin pausa
+  double _tiempoSinAvance = 0;
+  double _ultimaAyudaEn = 0;
+  bool _pistaActiva = false;
+  bool _yaEntro = false;
+  bool _estabaDentro = false;
+  bool _ayudaAbierta = false;
+
+  // Registro del juego que se guarda.
+  late RegistroJuego _registro;
+  bool _registroGuardado = false;
+  bool _algunaSaltada = false;
+  int? _racha; // se muestra en el cierre
+
   Pose get _pose => widget.poses[_indicePose];
+  MetricaPose? get _metricaActual =>
+      _registro.poses.isEmpty ? null : _registro.poses.last;
 
   @override
   void initState() {
     super.initState();
+    _registro = RegistroJuego(juego: idJuego, inicio: DateTime.now());
     ble.iniciar(); // por si se entra al juego sin conexión
     _ticker = createTicker(_alTick)..start();
   }
@@ -141,7 +161,6 @@ class _EjecucionScreenState extends State<EjecucionScreen>
 
     final DatosPostura? d = ble.datos.value;
     if (d != null) {
-      // Suavizado exponencial: acerca la figura al dato real de a poco.
       final k = 1 - math.exp(-velocidadSuavizado * dt);
       if (!_hayDato) {
         _adelante = d.adelante.toDouble();
@@ -161,7 +180,8 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         case _Fase.pose:
           _revisarPose(dt, ahora);
         case _Fase.logrado:
-          if (ahora - _inicioLogrado >= segundosCelebracion) _siguientePose();
+          if (ahora - _inicioLogrado >= segundosCelebracion) _despuesDeLaPose();
+        case _Fase.explicacion:
         case _Fase.fin:
           break;
       }
@@ -173,20 +193,16 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   void _revisarPartida(DatosPostura d, double ahora) {
     final m = _Muestra(ahora, d.adelante.toDouble(), d.lateral.toDouble());
     _muestras.add(m);
-
-    // Si el niño se movió más de lo permitido, o el firmware detecta mala
-    // postura, el conteo vuelve a empezar.
+    // Si se movió o el firmware marca mala postura, el conteo vuelve a empezar.
     if (d.malaPostura || !_estaQuieto()) {
       _muestras
         ..clear()
         ..add(m);
     }
-
     final quietoHace = ahora - _muestras.first.t;
     _progresoPartida = (quietoHace / segundosPartidaQuieto).clamp(0.0, 1.0).toDouble();
 
     if (quietoHace >= segundosPartidaQuieto) {
-      // Se guarda el promedio como "postura cero".
       double sumaA = 0, sumaL = 0;
       for (final x in _muestras) {
         sumaA += x.adelante;
@@ -194,8 +210,10 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       }
       _ceroAdelante = sumaA / _muestras.length;
       _ceroLateral = sumaL / _muestras.length;
+      _registro.ceroAdelante = _ceroAdelante;
+      _registro.ceroLateral = _ceroLateral;
       _muestras.clear();
-      _empezarPose(0);
+      _mostrarExplicacion(0);
     }
   }
 
@@ -212,7 +230,9 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   }
 
   void _revisarPose(double dt, double ahora) {
-    // Error en cada eje: cuánto falta (+) o sobra (−) respecto a la pose.
+    final metrica = _metricaActual!;
+    _tiempoEnPose += dt;
+
     final errorLateral = _pose.lateral - (_lateral - _ceroLateral);
     final errorAdelante = _pose.adelante - (_adelante - _ceroAdelante);
     _errorLateral = errorLateral;
@@ -224,7 +244,6 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     final okAdelante = margenA == null || errorAdelante.abs() <= margenA;
 
     if (okLateral && okAdelante) _ultimoDentro = ahora;
-    // Si salió hace menos de "graciaSalida", se cuenta como dentro.
     final dentro = ahora - _ultimoDentro <= graciaSalida;
 
     final cercaLateral = errorLateral.abs() <= margenL * factorCerca;
@@ -246,35 +265,114 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           : 'Un poquito más hacia tu derecha';
     }
 
+    // --- Métricas ---
+    if (dentro && !_yaEntro) {
+      _yaEntro = true;
+      metrica.segundosHastaEntrar = _tiempoEnPose;
+    }
+    if (_estabaDentro && !dentro) metrica.salidasDeZona++;
+    _estabaDentro = dentro;
+
+    // --- Avance y pista de los 20 s ---
     if (dentro) {
-      _progreso += dt; // fuera de la zona, simplemente no suma (se congela)
+      _tiempoSinAvance = 0;
+      _pistaActiva = false;
+      _progreso += dt; // fuera de la zona no suma: se congela
       if (_progreso >= segundosParaCompletar) {
         _progreso = segundosParaCompletar;
+        metrica.segundosHastaCompletar = _tiempoEnPose;
+        metrica.resultado = 'completada';
         _fase = _Fase.logrado;
         _inicioLogrado = ahora;
+        return;
+      }
+    } else {
+      _tiempoSinAvance += dt;
+      if (_tiempoSinAvance >= segundosSinAvanceParaPista && !_pistaActiva) {
+        _pistaActiva = true;
+        metrica.pistasUsadas++;
       }
     }
-  }
 
-  void _empezarPose(int indice) {
-    _indicePose = indice;
-    _progreso = 0;
-    _ultimoDentro = -100;
-    _comodidad = _Comodidad.incomodo;
-    _pista = '';
-    _fase = _Fase.pose;
-  }
-
-  void _siguientePose() {
-    if (_indicePose < widget.poses.length - 1) {
-      _empezarPose(_indicePose + 1);
-    } else {
-      _fase = _Fase.fin;
+    // --- Ayuda al minuto ---
+    if (!_ayudaAbierta && _tiempoEnPose - _ultimaAyudaEn >= segundosParaOfrecerAyuda) {
+      _ayudaAbierta = true;
+      _pausado = true;
+      metrica.ayudasOfrecidas++;
+      // Se abre después de dibujar este cuadro (no en medio del cálculo).
+      WidgetsBinding.instance.addPostFrameCallback((_) => _ofrecerAyuda());
     }
+  }
+
+  void _mostrarExplicacion(int indice) {
+    _indicePose = indice;
+    _fase = _Fase.explicacion;
+  }
+
+  /// El niño tocó "¡Vamos!": empieza la pose y su registro.
+  void _empezarPose() {
+    setState(() {
+      _registro.poses.add(MetricaPose(indice: _indicePose, instruccion: _pose.instruccion));
+      _progreso = 0;
+      _ultimoDentro = -100;
+      _comodidad = _Comodidad.incomodo;
+      _pista = '';
+      _tiempoEnPose = 0;
+      _tiempoSinAvance = 0;
+      _ultimaAyudaEn = 0;
+      _pistaActiva = false;
+      _yaEntro = false;
+      _estabaDentro = false;
+      _fase = _Fase.pose;
+    });
+  }
+
+  /// Después de completar o saltar una pose: la siguiente, o el cierre.
+  void _despuesDeLaPose() {
+    if (_indicePose < widget.poses.length - 1) {
+      _mostrarExplicacion(_indicePose + 1);
+    } else {
+      _terminar();
+    }
+  }
+
+  void _terminar() {
+    _fase = _Fase.fin;
+    _registro.completado = !_algunaSaltada &&
+        _registro.poses.length == widget.poses.length &&
+        _registro.poses.every((p) => p.completada);
+    _guardarRegistro(interrumpido: false).then((_) async {
+      final r = await AlmacenamientoJuegos.racha();
+      if (mounted) setState(() => _racha = r);
+    });
+  }
+
+  Future<void> _guardarRegistro({required bool interrumpido}) async {
+    if (_registroGuardado) return;
+    // Si salió antes de empezar alguna pose, no hay nada que valga guardar.
+    if (_registro.poses.isEmpty) return;
+    _registroGuardado = true;
+    _registro.fin = DateTime.now();
+    _registro.interrumpido = interrumpido;
+    try {
+      await AlmacenamientoJuegos.guardar(_registro);
+    } catch (e) {
+      debugPrint('No se pudo guardar el juego: $e');
+    }
+  }
+
+  /// Salir del juego a medias: queda como interrumpido (sin culpa) y se guarda.
+  Future<void> _salirDelJuego() async {
+    if (_fase != _Fase.fin) await _guardarRegistro(interrumpido: true);
+    if (mounted) Navigator.of(context).pop();
   }
 
   void _reiniciar() {
     setState(() {
+      _registro = RegistroJuego(juego: idJuego, inicio: DateTime.now());
+      _registroGuardado = false;
+      _algunaSaltada = false;
+      _racha = null;
       _muestras.clear();
       _progresoPartida = 0;
       _indicePose = 0;
@@ -284,13 +382,14 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   }
 
   Future<void> _pausar() async {
+    if (_pausado) return;
     setState(() => _pausado = true);
     final salir = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('¿Seguimos después?'),
-        content: const Text('Tu avance queda guardado mientras juegas.'),
+        content: const Text('Si sales ahora, Quique te espera para la próxima.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -305,10 +404,84 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     );
     if (!mounted) return;
     if (salir == true) {
-      Navigator.of(context).pop();
+      await _salirDelJuego();
     } else {
       setState(() => _pausado = false);
     }
+  }
+
+  Future<void> _ofrecerAyuda() async {
+    if (!mounted) return;
+    final opcion = await showDialog<_OpcionAyuda>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        icon: const CircleAvatar(
+          radius: 34,
+          backgroundColor: Colores.quique,
+          child: Icon(Icons.sentiment_neutral_rounded, size: 40, color: Colores.quiqueClaro),
+        ),
+        title: const Text('¡Esta pose es difícil!', textAlign: TextAlign.center),
+        content: const Text('¿Qué hacemos?', textAlign: TextAlign.center),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsOverflowDirection: VerticalDirection.down,
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(_OpcionAyuda.seguir),
+            child: const Text('Seguir intentando'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.of(context).pop(_OpcionAyuda.saltar),
+            child: const Text('Saltar esta pose'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(_OpcionAyuda.volverAlRio),
+            child: const Text('Volver al río'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    _ayudaAbierta = false;
+    switch (opcion) {
+      case _OpcionAyuda.saltar:
+        // Queda como "intentada" (ya es el valor por defecto).
+        _algunaSaltada = true;
+        setState(() {
+          _pausado = false;
+          _despuesDeLaPose();
+        });
+      case _OpcionAyuda.volverAlRio:
+        await _salirDelJuego();
+      case _OpcionAyuda.seguir:
+      case null:
+        setState(() {
+          _ultimaAyudaEn = _tiempoEnPose; // la próxima oferta, en otro minuto
+          _pausado = false;
+        });
+    }
+  }
+
+  Future<void> _pedirAyudaAdulto() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.family_restroom_rounded, size: 40, color: Colores.azul),
+        title: const Text('Para el adulto'),
+        content: const Text(
+          '1. Revisa que el cinturón esté encendido.\n'
+          '2. Revisa que el Bluetooth del teléfono esté activado.\n'
+          '3. Acerca el teléfono al cinturón.\n\n'
+          'La app se conecta sola apenas lo encuentra.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ------------------------------------------------------------
@@ -318,15 +491,36 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   Widget build(BuildContext context) {
     final conectado = ble.conectado && ble.datos.value != null;
 
-    return Scaffold(
-      backgroundColor: Colores.arena,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: _fase == _Fase.fin ? _cierre() : _juego(conectado),
+    Widget contenido;
+    if (_fase == _Fase.fin) {
+      contenido = _cierre();
+    } else if (_fase == _Fase.explicacion) {
+      contenido = _explicacion();
+    } else {
+      contenido = _juego(conectado);
+    }
+
+    // El botón "atrás" del teléfono no saca al niño de golpe: pregunta.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_fase == _Fase.fin) {
+          Navigator.of(context).pop();
+        } else {
+          _pausar();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colores.arena,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: contenido,
+              ),
             ),
           ),
         ),
@@ -334,11 +528,44 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     );
   }
 
+  // ---------- Fase: explicación con viñetas ----------
+  Widget _explicacion() {
+    final anterior = _indicePose == 0 ? null : widget.poses[_indicePose - 1];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _encabezado(),
+        _indicadorPoses(),
+        const SizedBox(height: 12),
+        Expanded(
+          flex: 3,
+          child: VinetasPose(
+            pose: _pose,
+            lateralInicio: anterior?.lateral ?? 0,
+            adelanteInicio: anterior?.adelante ?? 0,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _tarjetaTexto(_pose.instruccion, _pose.detalle),
+        const SizedBox(height: 12),
+        _quique(true, fraseFija: '¡Mira cómo se hace!', caraFija: Icons.sentiment_satisfied_rounded),
+        const Spacer(),
+        FilledButton(
+          style: FilledButton.styleFrom(minimumSize: const Size(64, 60)),
+          onPressed: _empezarPose,
+          child: const Text('¡Vamos!'),
+        ),
+      ],
+    );
+  }
+
+  // ---------- Fases: partida, pose y logrado ----------
   Widget _juego(bool conectado) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _encabezado(),
+        if (_fase != _Fase.partida) _indicadorPoses(),
         const SizedBox(height: 8),
         _instruccion(),
         const SizedBox(height: 12),
@@ -374,23 +601,26 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     );
   }
 
-  Widget _instruccion() {
-    String grande = '';
-    String chico = '';
-    switch (_fase) {
-      case _Fase.partida:
-        grande = 'Siéntate derecho y quédate quieto';
-        chico = 'Así Quique conoce tu postura cómoda.';
-      case _Fase.pose:
-        grande = _pose.instruccion;
-        chico = _pose.detalle;
-      case _Fase.logrado:
-        grande = '¡Lo lograste!';
-        chico = _indicePose < widget.poses.length - 1 ? 'Vamos con la siguiente.' : '';
-      case _Fase.fin:
-        grande = '';
-        chico = '';
-    }
+  /// Puntos que muestran en qué pose va (●○○).
+  Widget _indicadorPoses() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < widget.poses.length; i++)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i <= _indicePose ? Colores.bosque : Colores.linea,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _tarjetaTexto(String grande, String chico) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       decoration: BoxDecoration(
@@ -401,7 +631,8 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(grande, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colores.azul)),
+          Text(grande,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colores.azul)),
           if (chico.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(chico, style: Textos.secundario.copyWith(fontSize: 15)),
@@ -409,6 +640,19 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         ],
       ),
     );
+  }
+
+  Widget _instruccion() {
+    switch (_fase) {
+      case _Fase.partida:
+        return _tarjetaTexto('Siéntate derecho y quédate quieto',
+            'Así Quique conoce tu postura cómoda.');
+      case _Fase.logrado:
+        return _tarjetaTexto('¡Lo lograste!',
+            _indicePose < widget.poses.length - 1 ? 'Vamos con la siguiente.' : '');
+      default:
+        return _tarjetaTexto(_pose.instruccion, _pose.detalle);
+    }
   }
 
   Color get _colorEstado {
@@ -435,7 +679,6 @@ class _EjecucionScreenState extends State<EjecucionScreen>
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: FiguraTu(
-                // En la partida aún no hay postura cero: se muestra tal cual.
                 adelante: _adelante - _ceroAdelante,
                 lateral: _lateral - _ceroLateral,
                 siluetaAdelante: enPartida ? 0 : _pose.adelante,
@@ -443,6 +686,54 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                 color: _colorEstado,
                 margenLateral: enPartida ? null : _pose.margenLateral,
               ),
+            ),
+          ),
+          // Miniatura de la pose: siempre a mano. Se destaca con la pista.
+          if (!enPartida)
+            Positioned(
+              top: 10,
+              left: 10,
+              width: 70,
+              height: 92,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colores.tarjeta,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: _pistaActiva ? Colores.ambar : Colores.azul,
+                    width: _pistaActiva ? 4 : 1.5,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: FiguraTu(
+                        adelante: _pose.adelante,
+                        lateral: _pose.lateral,
+                        siluetaAdelante: 0,
+                        siluetaLateral: 0,
+                        color: Colores.comodo,
+                        mostrarSilueta: false,
+                      ),
+                    ),
+                    const Text('la pose',
+                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Colores.textoSecundario)),
+                  ],
+                ),
+              ),
+            ),
+          Positioned(
+            top: 12,
+            right: 16,
+            child: Row(
+              children: [
+                Icon(Icons.circle, size: 12, color: _colorEstado),
+                const SizedBox(width: 4),
+                const Text('Tú',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colores.azul)),
+              ],
             ),
           ),
           if (mostrarDatosDePrueba && !enPartida)
@@ -456,21 +747,6 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                 style: const TextStyle(fontSize: 11, color: Colores.textoSecundario),
               ),
             ),
-          Positioned(
-            top: 12,
-            right: 16,
-            child: Row(
-              children: [
-                Icon(Icons.circle, size: 12, color: _colorEstado),
-                const SizedBox(width: 4),
-                const Text('Tú', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colores.azul)),
-                const SizedBox(width: 12),
-                const Icon(Icons.square_rounded, size: 13, color: Colores.silueta),
-                const SizedBox(width: 4),
-                const Text('la pose', style: TextStyle(fontSize: 13, color: Colores.textoSecundario)),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -484,37 +760,57 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: Colores.linea),
       ),
-      child: const Column(
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(Icons.bluetooth_searching_rounded, size: 56, color: Colores.rio),
-          SizedBox(height: 16),
-          Text(
+          const Icon(Icons.bluetooth_searching_rounded, size: 56, color: Colores.rio),
+          const SizedBox(height: 16),
+          const Text(
             '¡Necesito tu cinturón para jugar!',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colores.azul),
           ),
-          SizedBox(height: 8),
-          Text(
+          const SizedBox(height: 8),
+          const Text(
             'Póntelo y acércate al teléfono. Te espero.',
             textAlign: TextAlign.center,
             style: Textos.secundario,
+          ),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(64, 48),
+              shape: const StadiumBorder(),
+              foregroundColor: Colores.azul,
+            ),
+            icon: const Icon(Icons.family_restroom_rounded),
+            label: const Text('Pedir ayuda a un adulto'),
+            onPressed: _pedirAyudaAdulto,
+          ),
+          const SizedBox(height: 4),
+          TextButton(
+            onPressed: _salirDelJuego,
+            child: const Text('Volver al río',
+                style: TextStyle(color: Colores.textoSecundario, decoration: TextDecoration.underline)),
           ),
         ],
       ),
     );
   }
 
-  /// Marcador provisorio de Quique: un círculo con su "cara" según cómo
-  /// se siente, y su frase. Se reemplazará por las ilustraciones.
-  Widget _quique(bool conectado) {
+  /// Marcador provisorio de Quique: círculo con su "cara" según cómo se
+  /// siente, y su frase. Se reemplazará por las ilustraciones.
+  Widget _quique(bool conectado, {String? fraseFija, IconData? caraFija}) {
     IconData cara = Icons.sentiment_satisfied_rounded;
     String frase = '';
-    if (!conectado) {
+    if (fraseFija != null) {
+      frase = fraseFija;
+      cara = caraFija ?? cara;
+    } else if (!conectado) {
       cara = Icons.sentiment_neutral_rounded;
       frase = '¡Te espero!';
     } else if (_fase == _Fase.partida) {
-      cara = Icons.sentiment_satisfied_rounded;
       frase = '¡Siéntate derecho como yo!';
     } else if (_fase == _Fase.logrado) {
       cara = Icons.celebration_rounded;
@@ -531,14 +827,21 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           cara = Icons.sentiment_dissatisfied_rounded;
           frase = _pista.isEmpty ? '¡Ayúdame a llegar a la pose!' : _pista;
       }
+      if (_pistaActiva && _comodidad != _Comodidad.comodo) {
+        frase = '$frase. ¡Mira la pose de la esquina!';
+      }
     }
+    final colorBorde = fraseFija != null ? Colores.linea : (conectado ? _colorEstado : Colores.linea);
     return Row(
       children: [
         Container(
           width: 64,
           height: 64,
-          decoration: BoxDecoration(color: Colores.quique, shape: BoxShape.circle,
-              border: Border.all(color: conectado ? _colorEstado : Colores.linea, width: 3)),
+          decoration: BoxDecoration(
+            color: Colores.quique,
+            shape: BoxShape.circle,
+            border: Border.all(color: colorBorde, width: 3),
+          ),
           child: Icon(cara, size: 38, color: Colores.quiqueClaro),
         ),
         const SizedBox(width: 12),
@@ -550,7 +853,8 @@ class _EjecucionScreenState extends State<EjecucionScreen>
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: Colores.linea),
             ),
-            child: Text(frase, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colores.azul)),
+            child: Text(frase,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colores.azul)),
           ),
         ),
       ],
@@ -580,7 +884,14 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     );
   }
 
+  // ---------- Fase: cierre ----------
   Widget _cierre() {
+    // Se celebra el esfuerzo, sin comparar con días anteriores.
+    final todoCompletado = _registro.completado;
+    final titulo = todoCompletado ? '¡Muy bien hecho!' : '¡Buen intento!';
+    final subtitulo = todoCompletado
+        ? 'Terminaste «Imita a Quique».'
+        : 'La próxima lo logramos juntos.';
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -591,9 +902,32 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           child: Icon(Icons.celebration_rounded, size: 64, color: Colores.quiqueClaro),
         ),
         const SizedBox(height: 24),
-        const Text('¡Muy bien hecho!', textAlign: TextAlign.center, style: Textos.titulo),
+        Text(titulo, textAlign: TextAlign.center, style: Textos.titulo),
         const SizedBox(height: 6),
-        const Text('Terminaste «Imita a Quique».', textAlign: TextAlign.center, style: Textos.cuerpo),
+        Text(subtitulo, textAlign: TextAlign.center, style: Textos.cuerpo),
+        const SizedBox(height: 16),
+        // Racha sin presión: una hoja y los días.
+        if (_racha != null && _racha! > 0)
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEF0DE),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.eco_rounded, color: Colores.bosqueClaro),
+                  const SizedBox(width: 6),
+                  Text(
+                    _racha == 1 ? '1 día' : '$_racha días',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colores.bosque),
+                  ),
+                ],
+              ),
+            ),
+          ),
         const SizedBox(height: 32),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(),

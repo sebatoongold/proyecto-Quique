@@ -2,7 +2,11 @@
 // inicio_apoderado.dart
 // Fecha: 11-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso C3 (inicio provisorio del mundo apoderado)
+// Versión: v2 — paso D2
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Nueva tarjeta "Juegos registrados (prueba)", que abre la lista de
+//    juegos guardados con sus métricas (registro_juegos_screen.dart).
 //
 // Esqueleto del dashboard: encabezado, estado de conexión real y la
 // actividad sugerida. El resumen de hoy, la comparación y el progreso
@@ -18,6 +22,7 @@ import '../../servicios/servicio_ble.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 import '../postura_screen.dart';
+import 'registro_juegos_screen.dart';
 
 class InicioApoderado extends StatelessWidget {
   final VoidCallback alIrAlMundoNino;
@@ -124,6 +129,23 @@ class InicioApoderado extends StatelessWidget {
                         child: const Text('Empezar con $nombreNinoEjemplo'),
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // PRUEBA: semilla de la futura visualización de actividades.
+                Material(
+                  color: Colores.tarjeta,
+                  borderRadius: BorderRadius.circular(22),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                    leading: const Icon(Icons.list_alt_rounded, color: Colores.azul),
+                    title: const Text('Juegos registrados', style: Textos.cuerpoDestacado),
+                    subtitle: const Text('Prueba: métricas de cada juego', style: Textos.secundario),
+                    trailing: const Icon(Icons.chevron_right_rounded, color: Colores.azul),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const RegistroJuegosScreen()),
+                    ),
                   ),
                 ),
               ],
