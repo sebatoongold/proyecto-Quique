@@ -1,7 +1,15 @@
+<!--
+  AndroidManifest.xml
+  Fecha: 11-10-2026
+  Proyecto: "La espalda no espera" — app Quique
+  CAMBIO respecto a la versión anterior: solo el nombre visible de la app
+  bajo el ícono (android:label), de "quique_te_dije_v_0_0_1" a "proyecto-Quique".
+  Nada más cambió en este archivo.
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" /> <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" /> <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <application
-        android:label="quique_te_dije_v_0_0_1"
+        android:label="proyecto-Quique"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
