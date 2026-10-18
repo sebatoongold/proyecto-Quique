@@ -1,28 +1,27 @@
 // ============================================================
 // inicio_apoderado.dart
-// Fecha: 11-10-2026
+// Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso D2
+// Versión: v5 — paso F1b
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Nueva tarjeta "Juegos registrados (prueba)", que abre la lista de
-//    juegos guardados con sus métricas (registro_juegos_screen.dart).
+// CAMBIOS v5 respecto a la v4:
+//  - La línea del participante activo muestra su edad exacta (antes,
+//    el grupo de edad).
 //
-// Esqueleto del dashboard: encabezado, estado de conexión real y la
-// actividad sugerida. El resumen de hoy, la comparación y el progreso
-// del niño llegan en el paso C5 (con datos de ejemplo).
-// El engranaje abre, por ahora, "Datos del sensor" (pantalla de prueba);
-// más adelante abrirá Configuración.
+// Esqueleto del dashboard del apoderado: encabezado, participante,
+// estado de conexión real, actividad sugerida e Historial.
 // ============================================================
 
 import 'package:flutter/material.dart';
 
-import '../../datos_ejemplo.dart';
+import '../../modelos/participante.dart';
 import '../../servicios/servicio_ble.dart';
+import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
-import '../postura_screen.dart';
-import 'registro_juegos_screen.dart';
+import 'configuracion_screen.dart';
+import 'historial_screen.dart';
+import 'participantes_screen.dart';
 
 class InicioApoderado extends StatelessWidget {
   final VoidCallback alIrAlMundoNino;
@@ -31,7 +30,16 @@ class InicioApoderado extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Toda la pantalla se redibuja si cambia el participante activo.
+    return ValueListenableBuilder<Participante?>(
+      valueListenable: ServicioParticipantes.instancia.activo,
+      builder: (context, activo, _) => _contenido(context, activo),
+    );
+  }
+
+  Widget _contenido(BuildContext context, Participante? activo) {
     final ble = ServicioBle.instancia;
+    final nombre = activo?.nombreVisible;
 
     return Container(
       color: Colores.fondo,
@@ -48,19 +56,21 @@ class InicioApoderado extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Expanded(
-                      child: Text('Hoy con $nombreNinoEjemplo', style: Textos.titulo),
+                    Expanded(
+                      child: Text(nombre == null ? 'Hoy' : 'Hoy con $nombre', style: Textos.titulo),
                     ),
                     IconButton(
-                      tooltip: 'Datos del sensor',
+                      tooltip: 'Configuración',
                       icon: const Icon(Icons.settings_rounded, color: Colores.azul),
                       onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const PosturaScreen()),
+                        MaterialPageRoute(builder: (_) => const ConfiguracionScreen()),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
+                _lineaParticipante(context, activo),
+                const SizedBox(height: 4),
                 // Estado de conexión real, se actualiza solo.
                 ValueListenableBuilder<EstadoConexion>(
                   valueListenable: ble.estado,
@@ -126,31 +136,60 @@ class InicioApoderado extends StatelessWidget {
                           foregroundColor: Colores.bosque,
                         ),
                         onPressed: alIrAlMundoNino,
-                        child: const Text('Empezar con $nombreNinoEjemplo'),
+                        child: Text(nombre == null ? 'Empezar' : 'Empezar con $nombre'),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 14),
-                // PRUEBA: semilla de la futura visualización de actividades.
                 Material(
                   color: Colores.tarjeta,
                   borderRadius: BorderRadius.circular(22),
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                    leading: const Icon(Icons.list_alt_rounded, color: Colores.azul),
-                    title: const Text('Juegos registrados', style: Textos.cuerpoDestacado),
-                    subtitle: const Text('Prueba: métricas de cada juego', style: Textos.secundario),
+                    leading: const Icon(Icons.insights_rounded, color: Colores.azul),
+                    title: const Text('Historial', style: Textos.cuerpoDestacado),
+                    subtitle: const Text('Postura y juegos, semana a semana', style: Textos.secundario),
                     trailing: const Icon(Icons.chevron_right_rounded, color: Colores.azul),
                     onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const RegistroJuegosScreen()),
+                      MaterialPageRoute(builder: (_) => const HistorialScreen()),
                     ),
                   ),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Participante activo (o aviso si no hay). Toca para cambiarlo.
+  static Widget _lineaParticipante(BuildContext context, Participante? activo) {
+    final hay = activo != null;
+    final texto = activo != null
+        ? 'Participante ${activo.codigo} · ${activo.edadTexto}'
+        : 'Sin participante: los juegos no quedarán a nombre de nadie';
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const ParticipantesScreen()),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            Icon(
+              hay ? Icons.badge_rounded : Icons.warning_amber_rounded,
+              size: 16,
+              color: hay ? Colores.neutro : Colores.ambar,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(texto, style: Textos.secundario),
+            ),
+          ],
         ),
       ),
     );

@@ -1,8 +1,14 @@
 // ============================================================
 // vinetas_pose.dart
-// Fecha: 11-10-2026
+// Fecha: 12-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso D2 (viñetas estilo cómic de la pose)
+// Versión: v2 — paso E (lenguaje de cómic)
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Viñeta 2: figura fantasma de la posición de partida + flecha curva
+//    hacia donde hay que moverse (de dónde viene y hacia dónde va).
+//  - Viñeta 3: marcas de "quieto" junto a la cabeza (mantener la pose).
+//  - Sin los puntos de los sensores: las viñetas son el ejemplo, no el niño.
 //
 // Tres viñetas que muestran cómo llegar a la pose: cómo empezar, el
 // movimiento a medio camino, y la pose final. Sin animación (decisión
@@ -75,6 +81,13 @@ class VinetasPose extends StatelessWidget {
               siluetaLateral: 0,
               color: esFinal ? Colores.comodo : Colores.azul,
               mostrarSilueta: false,
+              mostrarSensores: false,
+              // Viñeta 2: de dónde viene (fantasma) y hacia dónde va (flecha).
+              fantasmaLateral: i == 1 ? lateralInicio : null,
+              flechaDesde: i == 1 ? lateralInicio : null,
+              flechaHasta: i == 1 ? pose.lateral : null,
+              // Viñeta 3: "¡quédate así!".
+              marcasQuieto: esFinal,
             ),
           ),
           Text(

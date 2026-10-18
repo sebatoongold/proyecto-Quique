@@ -1,19 +1,24 @@
 // ============================================================
 // registro_juegos_screen.dart
-// Fecha: 11-10-2026
+// Fecha: 13-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso D2 (pantalla de PRUEBA del registro de juegos)
+// Versión: v3 — paso F1
 //
-// Muestra, sin diseño todavía, todo lo que se guardó de cada juego:
-// sirve para comprobar que las métricas se registran bien y es la
-// semilla de la futura visualización de actividades del apoderado.
-// Incluye "Borrar todo" para limpiar antes del testeo.
+// CAMBIOS v3 respecto a la v2:
+//  - Muestra solo los juegos del PARTICIPANTE ACTIVO (o los "sin
+//    participante" si no hay uno activo), y lo dice en el título.
+//  - El basurero borra solo los juegos de ese participante, ya no los
+//    de todos.
+//
+// Herramienta del diseñador (Configuración → Datos de prueba): todas
+// las métricas crudas de cada juego.
 // ============================================================
 
 import 'package:flutter/material.dart';
 
 import '../../modelos/registro_juego.dart';
 import '../../servicios/almacenamiento_juegos.dart';
+import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 
@@ -25,13 +30,17 @@ class RegistroJuegosScreen extends StatefulWidget {
 }
 
 class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
-  late Future<List<RegistroJuego>> _registros = AlmacenamientoJuegos.cargar();
+  late Future<List<RegistroJuego>> _registros = AlmacenamientoJuegos.cargarDelActivo();
+  // Participante cuyos juegos se muestran (null = sin participante).
+  final String? _codigo = ServicioParticipantes.instancia.activo.value?.codigo;
 
   Future<void> _borrarTodo() async {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('¿Borrar todos los juegos?'),
+        title: Text(_codigo == null
+            ? '¿Borrar los juegos sin participante?'
+            : '¿Borrar los juegos de $_codigo?'),
         content: const Text('Esto no se puede deshacer.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
@@ -40,18 +49,18 @@ class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
       ),
     );
     if (confirmar != true) return;
-    await AlmacenamientoJuegos.borrarTodo();
-    setState(() => _registros = AlmacenamientoJuegos.cargar());
+    await AlmacenamientoJuegos.borrarDe(_codigo);
+    setState(() => _registros = AlmacenamientoJuegos.cargarDelActivo());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Juegos registrados (prueba)'),
+        title: Text('Juegos · ${_codigo ?? 'sin participante'}'),
         actions: [
           IconButton(
-            tooltip: 'Borrar todo',
+            tooltip: 'Borrar estos juegos',
             icon: const Icon(Icons.delete_outline_rounded),
             onPressed: _borrarTodo,
           ),

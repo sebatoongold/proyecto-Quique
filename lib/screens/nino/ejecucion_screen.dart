@@ -1,26 +1,12 @@
 // ============================================================
 // ejecucion_screen.dart
-// Fecha: 11-10-2026
+// Fecha: 12-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v3 — paso D2 (actividad guiada completa + métricas)
+// Versión: v4 — paso E
 //
-// CAMBIOS v3 respecto a la v2:
-//  - Antes de cada pose aparecen las VIÑETAS (cómo empezar, el paso y
-//    la pose final) y el niño toca "¡Vamos!" cuando está listo.
-//  - Durante la pose hay una miniatura de la pose objetivo; a los 20 s
-//    sin avance se DESTACA (pista) y Quique dice hacia dónde moverse.
-//  - Al minuto sin completar, Quique OFRECE AYUDA: seguir intentando,
-//    saltar la pose, o volver al río. Nunca se siente como fracaso.
-//  - Sin cinturón: botón "Pedir ayuda a un adulto" (con pasos para el
-//    adulto) y "Volver al río".
-//  - El botón "atrás" del teléfono abre "¿Seguimos después?" en vez de
-//    salir de golpe.
-//  - CIERRE según cómo terminó: "¡Muy bien hecho!" (todo completado) o
-//    "¡Buen intento! La próxima lo logramos juntos" (saltó alguna), con
-//    la racha de días.
-//  - Se GUARDAN las métricas de cada juego en el teléfono
-//    (modelos/registro_juego.dart, servicios/almacenamiento_juegos.dart):
-//    al terminar, al salir o al saltar al río.
+// CAMBIOS v4 respecto a la v3:
+//  - Cuando aparece la pista de los 20 s, la miniatura de la pose
+//    muestra además la FLECHA de hacia dónde moverse (lenguaje de cómic).
 //
 // Flujo completo: flujo_nino_actividad_guiada_v1.svg. Sigue pendiente:
 // el botón "Escuchar" (requiere una dependencia de voz) y las
@@ -716,6 +702,12 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                         siluetaLateral: 0,
                         color: Colores.comodo,
                         mostrarSilueta: false,
+                        mostrarSensores: false,
+                        // Con la pista: flecha desde la pose anterior hasta esta.
+                        flechaDesde: _pistaActiva
+                            ? (_indicePose == 0 ? 0 : widget.poses[_indicePose - 1].lateral)
+                            : null,
+                        flechaHasta: _pistaActiva ? _pose.lateral : null,
                       ),
                     ),
                     const Text('la pose',

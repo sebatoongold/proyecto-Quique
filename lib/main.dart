@@ -1,21 +1,25 @@
 // ============================================================
 // main.dart
-// Fecha: 11-10-2026
+// Fecha: 13-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v3 — paso C3 (dos mundos)
+// Versión: v4 — paso F1
 //
-// CAMBIOS v3 respecto a la v2:
-//  - La pantalla de inicio ahora es PantallaPrincipal (los dos mundos
-//    con su barra inferior). La pantalla "Datos del sensor" sigue
-//    disponible desde el engranaje del mundo apoderado.
+// CAMBIOS v4 respecto a la v3:
+//  - Antes de mostrar la app, carga los participantes guardados y cuál
+//    está activo (ServicioParticipantes), para que el primer saludo y
+//    los juegos ya usen el participante correcto.
 // ============================================================
 
 import 'package:flutter/material.dart';
 
 import 'screens/pantalla_principal.dart';
+import 'servicios/servicio_participantes.dart';
 import 'tema/tema_app.dart';
 
-void main() {
+Future<void> main() async {
+  // Necesario para usar el almacenamiento del teléfono antes de runApp.
+  WidgetsFlutterBinding.ensureInitialized();
+  await ServicioParticipantes.instancia.iniciar();
   runApp(const MyApp());
 }
 

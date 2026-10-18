@@ -1,8 +1,15 @@
 // ============================================================
 // registro_juego.dart
-// Fecha: 11-10-2026
+// Fecha: 13-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso D2 (métricas de cada juego)
+// Versión: v2 — paso F1
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Cada juego guarda el CÓDIGO DEL PARTICIPANTE (P01, P02…) que
+//    estaba activo al jugarlo. Los juegos guardados antes de F1 no lo
+//    tienen (null) y aparecen como "sin participante".
+//  - El formato sigue siendo compatible: no se cambia la clave de
+//    almacenamiento, porque el campo nuevo es opcional.
 //
 // Lo que se guarda de cada juego jugado. Lo verá el APODERADO (y sirve
 // para el análisis del testeo); el niño nunca ve estos números.
@@ -67,6 +74,7 @@ class MetricaPose {
 
 class RegistroJuego {
   final String juego; // identificador, ej. 'imita_a_quique'
+  String? participante; // código del participante (P01…); null = sin participante
   final DateTime inicio; // reloj del celular
   DateTime? fin;
   bool interrumpido = false; // salió antes de terminar
@@ -83,6 +91,7 @@ class RegistroJuego {
 
   Map<String, dynamic> toJson() => {
         'juego': juego,
+        'participante': participante,
         'inicio': inicio.toIso8601String(),
         'fin': fin?.toIso8601String(),
         'interrumpido': interrumpido,
@@ -97,6 +106,7 @@ class RegistroJuego {
       juego: j['juego'] as String? ?? '',
       inicio: DateTime.tryParse(j['inicio'] as String? ?? '') ?? DateTime(2000),
     );
+    r.participante = j['participante'] as String?;
     final fin = j['fin'] as String?;
     r.fin = fin == null ? null : DateTime.tryParse(fin);
     r.interrumpido = j['interrumpido'] == true;

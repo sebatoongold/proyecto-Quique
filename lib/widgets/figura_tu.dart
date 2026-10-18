@@ -1,19 +1,16 @@
 // ============================================================
 // figura_tu.dart
-// Fecha: 11-10-2026
+// Fecha: 12-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso C4, corrección tras la primera prueba física
+// Versión: v3 — paso E (lenguaje de cómic)
 //
-// CAMBIOS v2 respecto a la v1:
-//  - De frente ya NO se muestra el encorvamiento (antes "acortaba" la
-//    espalda, algo difícil de leer y que confundía). Esta vista muestra
-//    solo la inclinación hacia los lados; para juegos de adelante/atrás
-//    se hará una vista de costado. El encorvamiento se avisa con texto.
-//  - Se dibuja la ZONA de la pose: una cuña clara alrededor de la
-//    silueta, del ancho exacto del margen que usa el juego. Si la cabeza
-//    de «Tú» está dentro de la cuña, cuenta. Lo que se ve = lo que cuenta.
-//  - Silueta más delgada (antes, por gruesa, parecía que la figura
-//    calzaba aunque estuviera corrida).
+// CAMBIOS v3 respecto a la v2:
+//  - Recursos de cómic opcionales, para las viñetas y la pista:
+//      · FIGURA FANTASMA: la posición de partida, tenue (de dónde viene).
+//      · FLECHA curva en ámbar desde la cabeza hacia donde debe ir.
+//      · MARCAS DE "QUIETO" junto a la cabeza (mantener la pose).
+//  - Se pueden ocultar los puntos de los sensores (en las viñetas
+//    no corresponden: no son el niño, son el ejemplo).
 //
 // Dibuja dos figuras de frente, superpuestas:
 //  - la SILUETA (gris azulado claro, más gruesa): la pose objetivo;
@@ -57,6 +54,10 @@ const double grosorTronco = 0.07;
 const double grosorExtremidades = 0.045;
 const double grosorExtraSilueta = 1.3; // la silueta es algo más gruesa: se ve como contorno
 const double opacidadZona = 0.45; // qué tan visible es la cuña de la zona
+// Recursos de cómic:
+const double opacidadFantasma = 0.22; // figura de partida, tenue
+const double grosorFlecha = 0.036; // relativo al tamaño del dibujo
+const double barridoMinimoFlecha = 0.5; // radianes: la flecha nunca es tan corta que no se vea
 
 /// Convierte las "unidades" del sensor (escala 0–180) a grados
 /// aproximados: unidades ≈ 90 × seno(ángulo).
@@ -71,6 +72,12 @@ class FiguraTu extends StatelessWidget {
   final Color color;
   final bool mostrarSilueta;
   final double? margenLateral; // ancho de la zona (unidades); null = sin zona
+  // Recursos de cómic (todos opcionales):
+  final double? fantasmaLateral; // posición de partida, tenue
+  final double? flechaDesde; // flecha desde esta inclinación lateral…
+  final double? flechaHasta; // …hasta esta
+  final bool marcasQuieto; // líneas de "quieto" junto a la cabeza
+  final bool mostrarSensores;
 
   const FiguraTu({
     super.key,
@@ -81,6 +88,11 @@ class FiguraTu extends StatelessWidget {
     required this.color,
     this.mostrarSilueta = true,
     this.margenLateral,
+    this.fantasmaLateral,
+    this.flechaDesde,
+    this.flechaHasta,
+    this.marcasQuieto = false,
+    this.mostrarSensores = true,
   });
 
   @override
@@ -95,6 +107,11 @@ class FiguraTu extends StatelessWidget {
         color: color,
         mostrarSilueta: mostrarSilueta,
         margenLateral: margenLateral,
+        fantasmaLateral: fantasmaLateral,
+        flechaDesde: flechaDesde,
+        flechaHasta: flechaHasta,
+        marcasQuieto: marcasQuieto,
+        mostrarSensores: mostrarSensores,
       ),
     );
   }
@@ -105,6 +122,11 @@ class _PintorFigura extends CustomPainter {
   final Color color;
   final bool mostrarSilueta;
   final double? margenLateral;
+  final double? fantasmaLateral;
+  final double? flechaDesde;
+  final double? flechaHasta;
+  final bool marcasQuieto;
+  final bool mostrarSensores;
 
   _PintorFigura({
     required this.adelante,
@@ -114,6 +136,11 @@ class _PintorFigura extends CustomPainter {
     required this.color,
     required this.mostrarSilueta,
     required this.margenLateral,
+    required this.fantasmaLateral,
+    required this.flechaDesde,
+    required this.flechaHasta,
+    required this.marcasQuieto,
+    required this.mostrarSensores,
   });
 
   double get _signo => modoEspejo ? 1.0 : -1.0;
@@ -130,7 +157,89 @@ class _PintorFigura extends CustomPainter {
       _dibujarCuerpo(canvas, size, siluetaAdelante, siluetaLateral,
           Colores.silueta, grosorExtraSilueta, false);
     }
-    _dibujarCuerpo(canvas, size, adelante, lateral, color, 1.0, true);
+    final fantasma = fantasmaLateral;
+    if (fantasma != null) {
+      _dibujarCuerpo(canvas, size, 0, fantasma,
+          color.withValues(alpha: opacidadFantasma), 1.0, false);
+    }
+    _dibujarCuerpo(canvas, size, adelante, lateral, color, 1.0, mostrarSensores);
+    final desde = flechaDesde, hasta = flechaHasta;
+    if (desde != null && hasta != null) _dibujarFlecha(canvas, size, desde, hasta);
+    if (marcasQuieto) _dibujarMarcasQuieto(canvas, size, lateral);
+  }
+
+  // Puntos clave del dibujo (iguales a los de _dibujarCuerpo).
+  double _u(Size size) => math.min(size.width, size.height);
+  Offset _medio(Size size) =>
+      Offset(size.width / 2, size.height * 0.80).translate(0, -_u(size) * largoEspaldaBaja);
+  double _radioHastaCabeza(Size size) =>
+      _u(size) * largoEspaldaAlta + _u(size) * radioCabeza * 1.35;
+  Offset _puntoEnArco(Offset centro, double angulo, double radio) =>
+      centro + Offset(math.sin(angulo), -math.cos(angulo)) * radio;
+
+  /// Flecha curva en ámbar, por fuera de la cabeza, desde la inclinación
+  /// "desde" hasta "hasta". Sigue el mismo modo espejo que la figura.
+  void _dibujarFlecha(Canvas canvas, Size size, double desdeU, double hastaU) {
+    var a = _anguloLateral(desdeU);
+    var b = _anguloLateral(hastaU);
+    if ((b - a).abs() < 0.001) return;
+    // Si el movimiento es pequeño, se alarga la flecha para que se vea.
+    if ((b - a).abs() < barridoMinimoFlecha) {
+      final centro = (a + b) / 2;
+      final sentido = (b - a).sign;
+      a = centro - sentido * barridoMinimoFlecha / 2;
+      b = centro + sentido * barridoMinimoFlecha / 2;
+    }
+    final u = _u(size);
+    final medio = _medio(size);
+    final radio = _radioHastaCabeza(size) + u * radioCabeza * 2.0;
+    final pincel = Paint()
+      ..color = Colores.ambar
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = u * grosorFlecha;
+
+    // El arco termina un poco antes de la punta, para que no la tape.
+    final sentido = (b - a).sign;
+    final finArco = b - sentido * 0.08;
+    canvas.drawPath(
+      Path()
+        ..addArc(Rect.fromCircle(center: medio, radius: radio), a - math.pi / 2, finArco - a),
+      pincel,
+    );
+
+    // Punta de la flecha, en la dirección del movimiento.
+    final punta = _puntoEnArco(medio, b, radio);
+    final tangente = Offset(math.cos(b), math.sin(b)) * sentido;
+    final normal = Offset(-tangente.dy, tangente.dx);
+    final h = u * 0.09;
+    final base = punta - tangente * h;
+    canvas.drawPath(
+      Path()
+        ..moveTo(punta.dx, punta.dy)
+        ..lineTo((base + normal * (h * 0.6)).dx, (base + normal * (h * 0.6)).dy)
+        ..lineTo((base - normal * (h * 0.6)).dx, (base - normal * (h * 0.6)).dy)
+        ..close(),
+      Paint()..color = Colores.ambar,
+    );
+  }
+
+  /// Tres líneas cortas a cada lado de la cabeza: "¡quédate así!".
+  void _dibujarMarcasQuieto(Canvas canvas, Size size, double uLateral) {
+    final u = _u(size);
+    final cabeza = _puntoEnArco(_medio(size), _anguloLateral(uLateral), _radioHastaCabeza(size));
+    final r = u * radioCabeza;
+    final pincel = Paint()
+      ..color = Colores.ambar
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = u * 0.02;
+    for (final lado in [-1.0, 1.0]) {
+      for (final grados in [-35.0, 0.0, 35.0]) {
+        final t = grados * math.pi / 180;
+        final dir = Offset(lado * math.cos(t), math.sin(t));
+        canvas.drawLine(cabeza + dir * (r * 1.6), cabeza + dir * (r * 2.3), pincel);
+      }
+    }
   }
 
   /// Cuña clara alrededor de la espalda alta de la silueta: desde la
@@ -226,5 +335,10 @@ class _PintorFigura extends CustomPainter {
       old.siluetaLateral != siluetaLateral ||
       old.color != color ||
       old.mostrarSilueta != mostrarSilueta ||
-      old.margenLateral != margenLateral;
+      old.margenLateral != margenLateral ||
+      old.fantasmaLateral != fantasmaLateral ||
+      old.flechaDesde != flechaDesde ||
+      old.flechaHasta != flechaHasta ||
+      old.marcasQuieto != marcasQuieto ||
+      old.mostrarSensores != mostrarSensores;
 }

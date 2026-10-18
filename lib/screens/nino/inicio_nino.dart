@@ -1,18 +1,21 @@
 // ============================================================
 // inicio_nino.dart
-// Fecha: 11-10-2026
+// Fecha: 13-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso C4
+// Versión: v3 — paso F1
 //
-// CAMBIOS v2 respecto a la v1:
-//  - El botón "Jugar" abre el juego de prueba «Imita a Quique»
-//    (ejecucion_screen.dart), con la figura «Tú» en vivo.
-// El mundo de Quique, los juegos de hoy y "Mi río" llegan en el paso C6.
+// CAMBIOS v3 respecto a la v2:
+//  - Saluda con el nombre del PARTICIPANTE ACTIVO (o su código si no
+//    tiene nombre). Sin participante, dice solo "¡Hola!". Ya no usa el
+//    nombre de ejemplo "Pablo".
+//
+// Inicio provisorio del niño: Quique (marcador) y el botón "Jugar".
 // ============================================================
 
 import 'package:flutter/material.dart';
 
-import '../../datos_ejemplo.dart';
+import '../../modelos/participante.dart';
+import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 import 'ejecucion_screen.dart';
@@ -43,10 +46,13 @@ class InicioNino extends StatelessWidget {
                         size: 64, color: Colores.quiqueClaro),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    '¡Hola, $nombreNinoEjemplo!',
-                    textAlign: TextAlign.center,
-                    style: Textos.titulo,
+                  ValueListenableBuilder<Participante?>(
+                    valueListenable: ServicioParticipantes.instancia.activo,
+                    builder: (context, activo, _) => Text(
+                      activo == null ? '¡Hola!' : '¡Hola, ${activo.nombreVisible}!',
+                      textAlign: TextAlign.center,
+                      style: Textos.titulo,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   const Text(
