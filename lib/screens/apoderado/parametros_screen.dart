@@ -2,7 +2,11 @@
 // parametros_screen.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso F2 (panel de parámetros)
+// Versión: v2 — paso F3
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Nueva sección "Postura cero": elegir si el juego parte desde la
+//    calibración del participante o toma el cero solo (automático).
 //
 // Herramienta del INVESTIGADOR (Configuración → Parámetros del juego):
 // cambia cómo se comporta el juego sin recompilar, para probar
@@ -85,6 +89,17 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
             children: [
               _estado(),
               const SizedBox(height: 20),
+
+              _seccion('Postura cero'),
+              _interruptor(
+                titulo: 'Usar la calibración del participante',
+                ayuda: _p.ceroCalibrado
+                    ? 'Sí: el juego parte desde su postura neutral calibrada y se salta '
+                        '"siéntate derecho". Si no tiene calibración, usa el automático.'
+                    : 'No (automático): al empezar cada juego, 2 s quieto y sin mala postura.',
+                valor: _p.ceroCalibrado,
+                alCambiar: (v) => _cambiar(_p.copyWith(ceroCalibrado: v), guardar: true),
+              ),
 
               _seccion('Poses'),
               _deslizador(

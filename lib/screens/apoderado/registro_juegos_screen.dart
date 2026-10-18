@@ -2,11 +2,10 @@
 // registro_juegos_screen.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v4 — paso F2
+// Versión: v5 — paso F3
 //
-// CAMBIOS v4 respecto a la v3:
-//  - Cada juego muestra con qué PARÁMETROS se jugó (la variante), si
-//    los tiene (los juegos anteriores a F2 no).
+// CAMBIOS v5 respecto a la v4:
+//  - Muestra qué tipo de cero usó cada juego (automático o calibrado).
 //
 // Herramienta del diseñador (Configuración → Datos de prueba): todas
 // las métricas crudas de cada juego.
@@ -123,7 +122,7 @@ class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
           Text(
             'Duración: ${_seg(r.duracion.inMilliseconds / 1000)} · '
             'Poses completadas: ${r.posesCompletadas} de ${r.poses.length} · '
-            'Postura cero: adelante ${r.ceroAdelante.toStringAsFixed(0)}, lado ${r.ceroLateral.toStringAsFixed(0)}',
+            'Postura cero${_tipoCero(r.tipoCero)}: adelante ${r.ceroAdelante.toStringAsFixed(0)}, lado ${r.ceroLateral.toStringAsFixed(0)}',
             style: Textos.secundario,
           ),
           if (r.parametros != null) ...[
@@ -154,6 +153,13 @@ class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
       'mantener ${p.segundosMantener.round()} s · pista ${p.segundosPista.round()} s · '
       'ayuda ${p.segundosAyuda.round()} s · espejo ${p.espejo ? 'sí' : 'no'} · '
       '×${p.amplificacion.toStringAsFixed(1)}';
+
+  static String _tipoCero(String? t) => switch (t) {
+        'calibrado' => ' (calibrada)',
+        'automatico' => ' (automática)',
+        'automatico_sin_calibracion' => ' (automática: no tenía calibración)',
+        _ => '',
+      };
 
   static String _seg(double s) => '${s.toStringAsFixed(1).replaceAll('.', ',')} s';
 

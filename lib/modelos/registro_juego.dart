@@ -2,12 +2,12 @@
 // registro_juego.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v3 — paso F2
+// Versión: v4 — paso F3
 //
-// CAMBIOS v3 respecto a la v2:
-//  - Cada juego guarda los PARÁMETROS con que se jugó (ángulo, márgenes,
-//    segundos, espejo…), para saber qué variante tuvo cada niño. Los
-//    juegos anteriores a F2 no los tienen (null). Formato compatible.
+// CAMBIOS v4 respecto a la v3:
+//  - Cada juego guarda qué TIPO DE CERO usó: 'automatico', 'calibrado'
+//    o 'automatico_sin_calibracion' (se pidió calibrado pero el
+//    participante no tenía). null en juegos anteriores a F3.
 //
 // Lo que se guarda de cada juego jugado. Lo verá el APODERADO (y sirve
 // para el análisis del testeo); el niño nunca ve estos números.
@@ -74,6 +74,7 @@ class RegistroJuego {
   final String juego; // identificador, ej. 'imita_a_quique'
   String? participante; // código del participante (P01…); null = sin participante
   Map<String, dynamic>? parametros; // parámetros del juego usados (ver parametros_juego.dart)
+  String? tipoCero; // 'automatico' | 'calibrado' | 'automatico_sin_calibracion'
   final DateTime inicio; // reloj del celular
   DateTime? fin;
   bool interrumpido = false; // salió antes de terminar
@@ -92,6 +93,7 @@ class RegistroJuego {
         'juego': juego,
         'participante': participante,
         'parametros': parametros,
+        'tipoCero': tipoCero,
         'inicio': inicio.toIso8601String(),
         'fin': fin?.toIso8601String(),
         'interrumpido': interrumpido,
@@ -109,6 +111,7 @@ class RegistroJuego {
     r.participante = j['participante'] as String?;
     final par = j['parametros'];
     if (par is Map<String, dynamic>) r.parametros = par;
+    r.tipoCero = j['tipoCero'] as String?;
     final fin = j['fin'] as String?;
     r.fin = fin == null ? null : DateTime.tryParse(fin);
     r.interrumpido = j['interrumpido'] == true;

@@ -2,12 +2,12 @@
 // configuracion_screen.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v4 — paso F2
+// Versión: v5 — paso F3
 //
-// CAMBIOS v4 respecto a la v3:
-//  - Nueva opción "Parámetros del juego" en la sección Testeo: abre el
-//    panel para probar variantes sin recompilar. El subtítulo avisa si
-//    hay una variante modificada.
+// CAMBIOS v5 respecto a la v4:
+//  - Nueva opción "Calibrar postura" del participante activo (muestra
+//    si ya está calibrado y con qué frase).
+//  - El resumen de la variante dice si el juego usa el cero calibrado.
 //
 // Sección "Testeo": participante activo (crear, elegir, exportar).
 //
@@ -28,6 +28,7 @@ import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 import '../postura_screen.dart';
+import 'calibracion_screen.dart';
 import 'parametros_screen.dart';
 import 'participantes_screen.dart';
 import 'registro_juegos_screen.dart';
@@ -63,6 +64,27 @@ class ConfiguracionScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
+              // Calibración del participante activo.
+              ValueListenableBuilder<Participante?>(
+                valueListenable: ServicioParticipantes.instancia.activo,
+                builder: (context, activo, _) {
+                  final cal = activo?.calibracion;
+                  return _opcion(
+                    context,
+                    icono: Icons.accessibility_new_rounded,
+                    titulo: 'Calibrar postura',
+                    subtitulo: activo == null
+                        ? 'Primero elige un participante'
+                        : (cal == null
+                            ? '${activo.codigo}: todavía sin calibrar'
+                            : '${activo.codigo}: calibrado con «${cal.instruccion}» · repetir'),
+                    destino: activo == null
+                        ? const ParticipantesScreen()
+                        : CalibracionScreen(participante: activo),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
               // Parámetros del juego: avisa si hay una variante modificada.
               ValueListenableBuilder<ParametrosJuego>(
                 valueListenable: ServicioParametros.instancia.actual,
@@ -74,7 +96,8 @@ class ConfiguracionScreen extends StatelessWidget {
                       ? 'Valores por defecto'
                       : 'Variante modificada · ángulo ${p.anguloLateral.round()}, '
                           'margen ${p.margenLateral.round()}, ${p.segundosMantener.round()} s'
-                          '${p.espejo ? '' : ', sin espejo'}',
+                          '${p.espejo ? '' : ', sin espejo'}'
+                          '${p.ceroCalibrado ? ', cero calibrado' : ''}',
                   destino: const ParametrosScreen(),
                 ),
               ),

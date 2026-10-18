@@ -2,16 +2,15 @@
 // ejecucion_screen.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v5 — paso F2
+// Versión: v6 — paso F3
 //
-// CAMBIOS v5 respecto a la v4:
-//  - Los parámetros que se prueban en el testeo vienen del PANEL
-//    (Configuración → Parámetros del juego), ya no de constantes:
-//    ángulo y márgenes de las poses, segundos de mantención, segundos
-//    hasta la pista y hasta ofrecer ayuda, y los números de prueba.
-//  - Se leen al EMPEZAR el juego (y al tocar "Otra vez"): cambiar el
-//    panel no altera un juego en curso.
-//  - El registro del juego guarda esos parámetros (qué variante fue).
+// CAMBIOS v6 respecto a la v5:
+//  - TIPO DE CERO: si en el panel está activado "Usar la calibración
+//    del participante" y el participante activo tiene calibración, el
+//    juego usa esa postura neutral como cero y se salta la fase
+//    "siéntate derecho" (va directo a la primera explicación).
+//    Si no, el cero se toma solo al empezar, como antes.
+//  - El registro guarda qué tipo de cero se usó.
 //
 // Flujo completo: flujo_nino_actividad_guiada_v1.svg. Sigue pendiente:
 // el botón "Escuchar" (requiere una dependencia de voz) y las
@@ -29,6 +28,7 @@ import '../../modelos/pose.dart';
 import '../../modelos/registro_juego.dart';
 import '../../servicios/almacenamiento_juegos.dart';
 import '../../servicios/servicio_parametros.dart';
+import '../../servicios/servicio_participantes.dart';
 import '../../servicios/servicio_ble.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
@@ -137,6 +137,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   void initState() {
     super.initState();
     _nuevoRegistro();
+    _aplicarCero();
     ble.iniciar(); // por si se entra al juego sin conexión
     _ticker = createTicker(_alTick)..start();
   }
@@ -153,6 +154,23 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     _poses = widget.poses ?? posesImitaAQuiqueCon(_p);
     _registro = RegistroJuego(juego: idJuego, inicio: DateTime.now())
       ..parametros = _p.toJson();
+  }
+
+  /// Decide de dónde sale la postura cero de este juego.
+  void _aplicarCero() {
+    final cal = ServicioParticipantes.instancia.activo.value?.calibracion;
+    if (_p.ceroCalibrado && cal != null) {
+      _ceroAdelante = cal.adelante;
+      _ceroLateral = cal.lateral;
+      _registro
+        ..ceroAdelante = cal.adelante
+        ..ceroLateral = cal.lateral
+        ..tipoCero = 'calibrado';
+      _mostrarExplicacion(0); // sin fase de partida
+    } else {
+      _registro.tipoCero = _p.ceroCalibrado ? 'automatico_sin_calibracion' : 'automatico';
+      _fase = _Fase.partida;
+    }
   }
 
   // ------------------------------------------------------------
@@ -381,7 +399,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       _progresoPartida = 0;
       _indicePose = 0;
       _progreso = 0;
-      _fase = _Fase.partida;
+      _aplicarCero(); // fase de partida, o directo a la explicación
     });
   }
 

@@ -2,14 +2,11 @@
 // participantes_screen.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso F1b
+// Versión: v3 — paso F3
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Al crear un participante se elige la EDAD EXACTA (botones de 4 a
-//    14 años, ver edadMinima/edadMaxima en participante.dart) en vez
-//    del grupo de edad. No hay edad por defecto: hay que elegirla, para
-//    que no quede registrada una edad equivocada por descuido.
-//  - La lista muestra la edad de cada participante.
+// CAMBIOS v3 respecto a la v2:
+//  - El menú ⋮ de cada participante tiene "Calibrar postura".
+//  - La lista muestra si cada participante está calibrado.
 //
 // Herramienta del INVESTIGADOR (se abre desde Configuración):
 //  - Crear un participante (código P01, P02…, nombre opcional, grupo
@@ -31,6 +28,7 @@ import '../../servicios/exportar_datos.dart';
 import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
+import 'calibracion_screen.dart';
 
 class ParticipantesScreen extends StatefulWidget {
   const ParticipantesScreen({super.key});
@@ -186,7 +184,8 @@ class _ParticipantesScreenState extends State<ParticipantesScreen> {
         ),
         title: Text('${p.codigo}$nombre', style: Textos.cuerpoDestacado),
         subtitle: Text(
-          '${p.edadTexto} · $n ${n == 1 ? 'juego' : 'juegos'}${esActivo ? ' · activo' : ''}',
+          '${p.edadTexto} · $n ${n == 1 ? 'juego' : 'juegos'}'
+          '${p.calibracion != null ? ' · calibrado' : ''}${esActivo ? ' · activo' : ''}',
           style: Textos.secundario,
         ),
         onTap: () => _servicio.activar(p),
@@ -194,9 +193,15 @@ class _ParticipantesScreenState extends State<ParticipantesScreen> {
           icon: const Icon(Icons.more_vert_rounded, color: Colores.azul),
           onSelected: (accion) {
             if (accion == 'copiar') _copiar(p);
+            if (accion == 'calibrar') {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => CalibracionScreen(participante: p)),
+              );
+            }
             if (accion == 'eliminar') _eliminar(p);
           },
           itemBuilder: (_) => const [
+            PopupMenuItem(value: 'calibrar', child: Text('Calibrar postura')),
             PopupMenuItem(value: 'copiar', child: Text('Copiar sus datos')),
             PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
           ],

@@ -1,8 +1,12 @@
 // ============================================================
 // servicio_participantes.dart
-// Fecha: 13-10-2026
+// Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso F1 (perfiles de participante)
+// Versión: v2 — paso F3
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Nuevo guardarCalibracion(): guarda la postura neutral medida en el
+//    perfil del participante y avisa a las pantallas.
 //
 // Guarda la lista de participantes y cuál está ACTIVO, en el teléfono
 // (shared_preferences, como los juegos). El participante activo es al
@@ -96,6 +100,18 @@ class ServicioParticipantes {
   Future<void> eliminar(Participante p) async {
     lista.value = lista.value.where((x) => x.codigo != p.codigo).toList();
     if (activo.value?.codigo == p.codigo) activo.value = null;
+    await _guardar();
+  }
+
+  /// Guarda (o borra, con null) la calibración de un participante.
+  Future<void> guardarCalibracion(Participante p, Calibracion? cal) async {
+    p.calibracion = cal;
+    // Listas nuevas para que las pantallas que escuchan se redibujen.
+    lista.value = [...lista.value];
+    if (activo.value?.codigo == p.codigo) {
+      activo.value = null; // fuerza el aviso aunque sea el mismo objeto
+      activo.value = p;
+    }
     await _guardar();
   }
 

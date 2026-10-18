@@ -2,11 +2,12 @@
 // exportar_datos.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v3 — paso F2
+// Versión: v4 — paso F3
 //
-// CAMBIOS v3 respecto a la v2:
-//  - Cada juego exportado incluye ahora sus 'parametros' (la variante
-//    con que se jugó). Formato 'quique-testeo-v3'.
+// CAMBIOS v4 respecto a la v3:
+//  - El perfil exportado incluye su 'calibracion' (postura neutral,
+//    frase usada, variación y fracción marcada como mala postura), y
+//    cada juego su 'tipoCero'. Formato 'quique-testeo-v4'.
 //
 // Arma un texto JSON con los datos de un participante (o de todos) y
 // lo copia al PORTAPAPELES. Desde ahí se pega donde convenga: un correo
@@ -32,7 +33,7 @@ import 'servicio_participantes.dart';
 // Identifica la versión del formato exportado. Si en un paso futuro se
 // agregan datos (eventos, recorrido…), se sube el número para saber
 // qué contiene cada exportación.
-const String formatoExportacion = 'quique-testeo-v3';
+const String formatoExportacion = 'quique-testeo-v4';
 
 class ExportarDatos {
   ExportarDatos._();
@@ -42,6 +43,7 @@ class ExportarDatos {
         if (incluirNombre) 'nombre': p.nombre,
         'edad': p.edad,
         'creado': p.creado.toIso8601String(),
+        'calibracion': p.calibracion?.toJson(),
       };
 
   /// Datos de UN participante, como texto JSON legible.

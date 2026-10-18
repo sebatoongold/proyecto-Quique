@@ -2,7 +2,13 @@
 // parametros_juego.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso F2 (panel de parámetros)
+// Versión: v2 — paso F3
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Nuevo parámetro `ceroCalibrado`: el juego usa como "cero" la
+//    postura neutral calibrada del participante (Configuración →
+//    Calibrar postura) en vez de tomarla sola al empezar. Por defecto,
+//    no (automático, como antes).
 //
 // Los parámetros del juego que se pueden cambiar DESDE LA APP
 // (Configuración → Parámetros del juego), sin recompilar. Sirven para
@@ -40,6 +46,9 @@ const bool defectoEspejo = true;
 const double defectoAmplificacion = 1.5;
 // Números de prueba sobre la figura (apagar con niños).
 const bool defectoMostrarNumeros = true;
+// Cero del juego: false = automático (2 s quieto al empezar cada juego);
+// true = la calibración del participante (si no tiene, usa el automático).
+const bool defectoCeroCalibrado = false;
 
 // ---------- RANGOS DE LOS DESLIZADORES DEL PANEL ----------
 // (mínimo, máximo, paso). Cambiarlos aquí cambia el panel.
@@ -63,6 +72,7 @@ class ParametrosJuego {
   final bool espejo;
   final double amplificacion;
   final bool mostrarNumeros;
+  final bool ceroCalibrado;
 
   const ParametrosJuego({
     this.anguloLateral = defectoAnguloLateral,
@@ -75,6 +85,7 @@ class ParametrosJuego {
     this.espejo = defectoEspejo,
     this.amplificacion = defectoAmplificacion,
     this.mostrarNumeros = defectoMostrarNumeros,
+    this.ceroCalibrado = defectoCeroCalibrado,
   });
 
   /// true si todo está en los valores por defecto.
@@ -91,6 +102,7 @@ class ParametrosJuego {
     bool? espejo,
     double? amplificacion,
     bool? mostrarNumeros,
+    bool? ceroCalibrado,
   }) =>
       ParametrosJuego(
         anguloLateral: anguloLateral ?? this.anguloLateral,
@@ -103,6 +115,7 @@ class ParametrosJuego {
         espejo: espejo ?? this.espejo,
         amplificacion: amplificacion ?? this.amplificacion,
         mostrarNumeros: mostrarNumeros ?? this.mostrarNumeros,
+        ceroCalibrado: ceroCalibrado ?? this.ceroCalibrado,
       );
 
   Map<String, dynamic> toJson() => {
@@ -116,6 +129,7 @@ class ParametrosJuego {
         'espejo': espejo,
         'amplificacion': amplificacion,
         'mostrarNumeros': mostrarNumeros,
+        'ceroCalibrado': ceroCalibrado,
       };
 
   /// Lee lo guardado; lo que falte o esté mal queda en su valor por defecto.
@@ -133,6 +147,7 @@ class ParametrosJuego {
       espejo: b('espejo', defectoEspejo),
       amplificacion: n('amplificacion', defectoAmplificacion),
       mostrarNumeros: b('mostrarNumeros', defectoMostrarNumeros),
+      ceroCalibrado: b('ceroCalibrado', defectoCeroCalibrado),
     );
   }
 }
