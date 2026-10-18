@@ -1,18 +1,18 @@
 // ============================================================
 // main.dart
-// Fecha: 13-10-2026
+// Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v4 — paso F1
+// Versión: v5 — paso F2
 //
-// CAMBIOS v4 respecto a la v3:
-//  - Antes de mostrar la app, carga los participantes guardados y cuál
-//    está activo (ServicioParticipantes), para que el primer saludo y
-//    los juegos ya usen el participante correcto.
+// CAMBIOS v5 respecto a la v4:
+//  - Antes de mostrar la app, carga también los parámetros del juego
+//    guardados en el panel (ServicioParametros).
 // ============================================================
 
 import 'package:flutter/material.dart';
 
 import 'screens/pantalla_principal.dart';
+import 'servicios/servicio_parametros.dart';
 import 'servicios/servicio_participantes.dart';
 import 'tema/tema_app.dart';
 
@@ -20,6 +20,7 @@ Future<void> main() async {
   // Necesario para usar el almacenamiento del teléfono antes de runApp.
   WidgetsFlutterBinding.ensureInitialized();
   await ServicioParticipantes.instancia.iniciar();
+  await ServicioParametros.instancia.iniciar();
   runApp(const MyApp());
 }
 

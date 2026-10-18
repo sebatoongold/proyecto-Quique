@@ -1,15 +1,13 @@
 // ============================================================
 // registro_juego.dart
-// Fecha: 13-10-2026
+// Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso F1
+// Versión: v3 — paso F2
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Cada juego guarda el CÓDIGO DEL PARTICIPANTE (P01, P02…) que
-//    estaba activo al jugarlo. Los juegos guardados antes de F1 no lo
-//    tienen (null) y aparecen como "sin participante".
-//  - El formato sigue siendo compatible: no se cambia la clave de
-//    almacenamiento, porque el campo nuevo es opcional.
+// CAMBIOS v3 respecto a la v2:
+//  - Cada juego guarda los PARÁMETROS con que se jugó (ángulo, márgenes,
+//    segundos, espejo…), para saber qué variante tuvo cada niño. Los
+//    juegos anteriores a F2 no los tienen (null). Formato compatible.
 //
 // Lo que se guarda de cada juego jugado. Lo verá el APODERADO (y sirve
 // para el análisis del testeo); el niño nunca ve estos números.
@@ -75,6 +73,7 @@ class MetricaPose {
 class RegistroJuego {
   final String juego; // identificador, ej. 'imita_a_quique'
   String? participante; // código del participante (P01…); null = sin participante
+  Map<String, dynamic>? parametros; // parámetros del juego usados (ver parametros_juego.dart)
   final DateTime inicio; // reloj del celular
   DateTime? fin;
   bool interrumpido = false; // salió antes de terminar
@@ -92,6 +91,7 @@ class RegistroJuego {
   Map<String, dynamic> toJson() => {
         'juego': juego,
         'participante': participante,
+        'parametros': parametros,
         'inicio': inicio.toIso8601String(),
         'fin': fin?.toIso8601String(),
         'interrumpido': interrumpido,
@@ -107,6 +107,8 @@ class RegistroJuego {
       inicio: DateTime.tryParse(j['inicio'] as String? ?? '') ?? DateTime(2000),
     );
     r.participante = j['participante'] as String?;
+    final par = j['parametros'];
+    if (par is Map<String, dynamic>) r.parametros = par;
     final fin = j['fin'] as String?;
     r.fin = fin == null ? null : DateTime.tryParse(fin);
     r.interrumpido = j['interrumpido'] == true;

@@ -1,16 +1,14 @@
 // ============================================================
 // figura_tu.dart
-// Fecha: 12-10-2026
+// Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v3 — paso E (lenguaje de cómic)
+// Versión: v4 — paso F2
 //
-// CAMBIOS v3 respecto a la v2:
-//  - Recursos de cómic opcionales, para las viñetas y la pista:
-//      · FIGURA FANTASMA: la posición de partida, tenue (de dónde viene).
-//      · FLECHA curva en ámbar desde la cabeza hacia donde debe ir.
-//      · MARCAS DE "QUIETO" junto a la cabeza (mantener la pose).
-//  - Se pueden ocultar los puntos de los sensores (en las viñetas
-//    no corresponden: no son el niño, son el ejemplo).
+// CAMBIOS v4 respecto a la v3:
+//  - El MODO ESPEJO y la EXAGERACIÓN de la inclinación ya no son
+//    constantes: se toman del panel de parámetros (Configuración →
+//    Parámetros del juego). Afectan a todas las figuras, también a las
+//    de las viñetas, para que lo que se explica calce con lo que se ve.
 //
 // Dibuja dos figuras de frente, superpuestas:
 //  - la SILUETA (gris azulado claro, más gruesa): la pose objetivo;
@@ -31,18 +29,18 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../servicios/servicio_parametros.dart';
 import '../tema/colores.dart';
 
 // ---------- PARÁMETROS AJUSTABLES DEL DIBUJO ----------
-// Exagera la inclinación en pantalla para que el niño la note mejor.
-// 1.0 = ángulo real aproximado. La silueta usa el mismo factor, así
-// que calzar con ella sigue significando lo mismo.
-const double amplificacionVisual = 1.5;
-
-// ESPEJO: true = la figura se mueve como en un espejo (si el niño se
-// inclina a SU izquierda, la figura va hacia la izquierda de la
-// pantalla). Es lo más intuitivo con el teléfono frente al niño.
-const bool modoEspejo = true;
+// EXAGERACIÓN (amplificación) y ESPEJO: ahora en el panel de parámetros
+// (valores por defecto en modelos/parametros_juego.dart).
+//  - Exageración: 1.0 = ángulo real; más = la inclinación se nota más.
+//    La silueta usa el mismo factor, así que calzar con ella sigue
+//    significando lo mismo.
+//  - Espejo: sí = la figura se mueve como en un espejo (si el niño se
+//    inclina a SU izquierda, la figura va hacia la izquierda de la
+//    pantalla). Es lo que se quiere comprobar en el testeo.
 
 // Proporciones (relativas al lado menor del área de dibujo).
 const double largoEspaldaBaja = 0.20;
@@ -97,9 +95,12 @@ class FiguraTu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = ServicioParametros.instancia.actual.value;
     return CustomPaint(
       size: Size.infinite,
       painter: _PintorFigura(
+        espejo: p.espejo,
+        amplificacion: p.amplificacion,
         adelante: adelante,
         lateral: lateral,
         siluetaAdelante: siluetaAdelante,
@@ -118,6 +119,8 @@ class FiguraTu extends StatelessWidget {
 }
 
 class _PintorFigura extends CustomPainter {
+  final bool espejo;
+  final double amplificacion;
   final double adelante, lateral, siluetaAdelante, siluetaLateral;
   final Color color;
   final bool mostrarSilueta;
@@ -129,6 +132,8 @@ class _PintorFigura extends CustomPainter {
   final bool mostrarSensores;
 
   _PintorFigura({
+    required this.espejo,
+    required this.amplificacion,
     required this.adelante,
     required this.lateral,
     required this.siluetaAdelante,
@@ -143,11 +148,11 @@ class _PintorFigura extends CustomPainter {
     required this.mostrarSensores,
   });
 
-  double get _signo => modoEspejo ? 1.0 : -1.0;
+  double get _signo => espejo ? 1.0 : -1.0;
 
   /// Unidades laterales -> ángulo en radianes, tal como se dibuja.
   double _anguloLateral(double unidades) =>
-      _signo * unidadesAGrados(unidades) * amplificacionVisual * math.pi / 180;
+      _signo * unidadesAGrados(unidades) * amplificacion * math.pi / 180;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -329,6 +334,8 @@ class _PintorFigura extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PintorFigura old) =>
+      old.espejo != espejo ||
+      old.amplificacion != amplificacion ||
       old.adelante != adelante ||
       old.lateral != lateral ||
       old.siluetaAdelante != siluetaAdelante ||

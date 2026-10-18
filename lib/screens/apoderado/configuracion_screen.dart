@@ -2,10 +2,12 @@
 // configuracion_screen.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v3 — paso F1b
+// Versión: v4 — paso F2
 //
-// CAMBIOS v3 respecto a la v2:
-//  - El participante activo muestra su edad exacta (antes, el grupo).
+// CAMBIOS v4 respecto a la v3:
+//  - Nueva opción "Parámetros del juego" en la sección Testeo: abre el
+//    panel para probar variantes sin recompilar. El subtítulo avisa si
+//    hay una variante modificada.
 //
 // Sección "Testeo": participante activo (crear, elegir, exportar).
 //
@@ -19,11 +21,14 @@
 
 import 'package:flutter/material.dart';
 
+import '../../modelos/parametros_juego.dart';
 import '../../modelos/participante.dart';
+import '../../servicios/servicio_parametros.dart';
 import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 import '../postura_screen.dart';
+import 'parametros_screen.dart';
 import 'participantes_screen.dart';
 import 'registro_juegos_screen.dart';
 
@@ -55,6 +60,22 @@ class ConfiguracionScreen extends StatelessWidget {
                       ? 'Elige o crea uno antes de que juegue'
                       : '${activo.nombreVisible} · ${activo.edadTexto} · cambiar o exportar',
                   destino: const ParticipantesScreen(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Parámetros del juego: avisa si hay una variante modificada.
+              ValueListenableBuilder<ParametrosJuego>(
+                valueListenable: ServicioParametros.instancia.actual,
+                builder: (context, p, _) => _opcion(
+                  context,
+                  icono: Icons.tune_rounded,
+                  titulo: 'Parámetros del juego',
+                  subtitulo: p.esPorDefecto
+                      ? 'Valores por defecto'
+                      : 'Variante modificada · ángulo ${p.anguloLateral.round()}, '
+                          'margen ${p.margenLateral.round()}, ${p.segundosMantener.round()} s'
+                          '${p.espejo ? '' : ', sin espejo'}',
+                  destino: const ParametrosScreen(),
                 ),
               ),
               const SizedBox(height: 24),

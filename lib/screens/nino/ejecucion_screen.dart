@@ -1,12 +1,17 @@
 // ============================================================
 // ejecucion_screen.dart
-// Fecha: 12-10-2026
+// Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v4 — paso E
+// Versión: v5 — paso F2
 //
-// CAMBIOS v4 respecto a la v3:
-//  - Cuando aparece la pista de los 20 s, la miniatura de la pose
-//    muestra además la FLECHA de hacia dónde moverse (lenguaje de cómic).
+// CAMBIOS v5 respecto a la v4:
+//  - Los parámetros que se prueban en el testeo vienen del PANEL
+//    (Configuración → Parámetros del juego), ya no de constantes:
+//    ángulo y márgenes de las poses, segundos de mantención, segundos
+//    hasta la pista y hasta ofrecer ayuda, y los números de prueba.
+//  - Se leen al EMPEZAR el juego (y al tocar "Otra vez"): cambiar el
+//    panel no altera un juego en curso.
+//  - El registro del juego guarda esos parámetros (qué variante fue).
 //
 // Flujo completo: flujo_nino_actividad_guiada_v1.svg. Sigue pendiente:
 // el botón "Escuchar" (requiere una dependencia de voz) y las
@@ -19,9 +24,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../../modelos/datos_postura.dart';
+import '../../modelos/parametros_juego.dart';
 import '../../modelos/pose.dart';
 import '../../modelos/registro_juego.dart';
 import '../../servicios/almacenamiento_juegos.dart';
+import '../../servicios/servicio_parametros.dart';
 import '../../servicios/servicio_ble.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
@@ -31,9 +38,12 @@ import '../../widgets/vinetas_pose.dart';
 // ############################################################
 // ##  PARÁMETROS AJUSTABLES DEL JUEGO                       ##
 // ############################################################
-// Segundos que hay que mantener cada pose.
-const double segundosParaCompletar = 10;
-// Los márgenes de cada pose están en modelos/pose.dart.
+// EN EL PANEL DE PARÁMETROS (valores por defecto en
+// modelos/parametros_juego.dart): segundos para mantener cada pose,
+// ángulo y márgenes de las poses, segundos hasta la pista y hasta
+// ofrecer ayuda, y si se muestran los números de prueba.
+//
+// Fijos (no suelen necesitar cambios durante el testeo):
 // "Cerca" = dentro de este múltiplo del margen (Quique un poco incómodo).
 const double factorCerca = 1.8;
 // Salidas de la zona más cortas que esto se ignoran (ruido del sensor).
@@ -45,14 +55,8 @@ const double toleranciaQuieto = 4;
 const double velocidadSuavizado = 8;
 // Duración de la celebración breve al completar una pose.
 const double segundosCelebracion = 1.5;
-// Ayudas (flujo, fase 3): pista y ofrecimiento de ayuda.
-const double segundosSinAvanceParaPista = 20;
-const double segundosParaOfrecerAyuda = 60;
 // Identificador del juego en los registros guardados.
 const String idJuego = 'imita_a_quique';
-// Muestra números de prueba sobre la figura (útil para calibrar).
-// Poner en false para el testeo con niños.
-const bool mostrarDatosDePrueba = true;
 
 enum _Fase { partida, explicacion, pose, logrado, fin }
 
@@ -66,9 +70,11 @@ class _Muestra {
 }
 
 class EjecucionScreen extends StatefulWidget {
-  final List<Pose> poses;
+  // Poses fijas para otro juego; null = las de «Imita a Quique» con los
+  // números del panel de parámetros.
+  final List<Pose>? poses;
 
-  const EjecucionScreen({super.key, this.poses = posesImitaAQuique});
+  const EjecucionScreen({super.key, this.poses});
 
   @override
   State<EjecucionScreen> createState() => _EjecucionScreenState();
@@ -113,20 +119,24 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   bool _estabaDentro = false;
   bool _ayudaAbierta = false;
 
+  // Parámetros y poses de ESTE juego (se fijan al empezar).
+  late ParametrosJuego _p;
+  late List<Pose> _poses;
+
   // Registro del juego que se guarda.
   late RegistroJuego _registro;
   bool _registroGuardado = false;
   bool _algunaSaltada = false;
   int? _racha; // se muestra en el cierre
 
-  Pose get _pose => widget.poses[_indicePose];
+  Pose get _pose => _poses[_indicePose];
   MetricaPose? get _metricaActual =>
       _registro.poses.isEmpty ? null : _registro.poses.last;
 
   @override
   void initState() {
     super.initState();
-    _registro = RegistroJuego(juego: idJuego, inicio: DateTime.now());
+    _nuevoRegistro();
     ble.iniciar(); // por si se entra al juego sin conexión
     _ticker = createTicker(_alTick)..start();
   }
@@ -135,6 +145,14 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   void dispose() {
     _ticker.dispose();
     super.dispose();
+  }
+
+  /// Lee los parámetros vigentes y empieza un registro nuevo con ellos.
+  void _nuevoRegistro() {
+    _p = ServicioParametros.instancia.actual.value;
+    _poses = widget.poses ?? posesImitaAQuiqueCon(_p);
+    _registro = RegistroJuego(juego: idJuego, inicio: DateTime.now())
+      ..parametros = _p.toJson();
   }
 
   // ------------------------------------------------------------
@@ -264,8 +282,8 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       _tiempoSinAvance = 0;
       _pistaActiva = false;
       _progreso += dt; // fuera de la zona no suma: se congela
-      if (_progreso >= segundosParaCompletar) {
-        _progreso = segundosParaCompletar;
+      if (_progreso >= _p.segundosMantener) {
+        _progreso = _p.segundosMantener;
         metrica.segundosHastaCompletar = _tiempoEnPose;
         metrica.resultado = 'completada';
         _fase = _Fase.logrado;
@@ -274,14 +292,14 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       }
     } else {
       _tiempoSinAvance += dt;
-      if (_tiempoSinAvance >= segundosSinAvanceParaPista && !_pistaActiva) {
+      if (_tiempoSinAvance >= _p.segundosPista && !_pistaActiva) {
         _pistaActiva = true;
         metrica.pistasUsadas++;
       }
     }
 
     // --- Ayuda al minuto ---
-    if (!_ayudaAbierta && _tiempoEnPose - _ultimaAyudaEn >= segundosParaOfrecerAyuda) {
+    if (!_ayudaAbierta && _tiempoEnPose - _ultimaAyudaEn >= _p.segundosAyuda) {
       _ayudaAbierta = true;
       _pausado = true;
       metrica.ayudasOfrecidas++;
@@ -315,7 +333,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
 
   /// Después de completar o saltar una pose: la siguiente, o el cierre.
   void _despuesDeLaPose() {
-    if (_indicePose < widget.poses.length - 1) {
+    if (_indicePose < _poses.length - 1) {
       _mostrarExplicacion(_indicePose + 1);
     } else {
       _terminar();
@@ -325,7 +343,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   void _terminar() {
     _fase = _Fase.fin;
     _registro.completado = !_algunaSaltada &&
-        _registro.poses.length == widget.poses.length &&
+        _registro.poses.length == _poses.length &&
         _registro.poses.every((p) => p.completada);
     _guardarRegistro(interrumpido: false).then((_) async {
       final r = await AlmacenamientoJuegos.racha();
@@ -355,7 +373,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
 
   void _reiniciar() {
     setState(() {
-      _registro = RegistroJuego(juego: idJuego, inicio: DateTime.now());
+      _nuevoRegistro(); // "Otra vez" usa los parámetros vigentes
       _registroGuardado = false;
       _algunaSaltada = false;
       _racha = null;
@@ -516,7 +534,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
 
   // ---------- Fase: explicación con viñetas ----------
   Widget _explicacion() {
-    final anterior = _indicePose == 0 ? null : widget.poses[_indicePose - 1];
+    final anterior = _indicePose == 0 ? null : _poses[_indicePose - 1];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -567,7 +585,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   Widget _encabezado() {
     final titulo = _fase == _Fase.partida
         ? 'Imita a Quique'
-        : 'Pose ${_indicePose + 1} de ${widget.poses.length}';
+        : 'Pose ${_indicePose + 1} de ${_poses.length}';
     return Row(
       children: [
         IconButton(
@@ -592,7 +610,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        for (var i = 0; i < widget.poses.length; i++)
+        for (var i = 0; i < _poses.length; i++)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 4),
             width: 9,
@@ -635,7 +653,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
             'Así Quique conoce tu postura cómoda.');
       case _Fase.logrado:
         return _tarjetaTexto('¡Lo lograste!',
-            _indicePose < widget.poses.length - 1 ? 'Vamos con la siguiente.' : '');
+            _indicePose < _poses.length - 1 ? 'Vamos con la siguiente.' : '');
       default:
         return _tarjetaTexto(_pose.instruccion, _pose.detalle);
     }
@@ -705,7 +723,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                         mostrarSensores: false,
                         // Con la pista: flecha desde la pose anterior hasta esta.
                         flechaDesde: _pistaActiva
-                            ? (_indicePose == 0 ? 0 : widget.poses[_indicePose - 1].lateral)
+                            ? (_indicePose == 0 ? 0 : _poses[_indicePose - 1].lateral)
                             : null,
                         flechaHasta: _pistaActiva ? _pose.lateral : null,
                       ),
@@ -728,7 +746,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
               ],
             ),
           ),
-          if (mostrarDatosDePrueba && !enPartida)
+          if (_p.mostrarNumeros && !enPartida)
             Positioned(
               left: 14,
               bottom: 10,
@@ -855,10 +873,10 @@ class _EjecucionScreenState extends State<EjecucionScreen>
 
   Widget _avance() {
     final enPartida = _fase == _Fase.partida;
-    final valor = enPartida ? _progresoPartida : _progreso / segundosParaCompletar;
+    final valor = enPartida ? _progresoPartida : _progreso / _p.segundosMantener;
     final texto = enPartida
         ? 'Quédate quieto un momentito…'
-        : '${_progreso.floor()} de ${segundosParaCompletar.round()} segundos';
+        : '${_progreso.floor()} de ${_p.segundosMantener.round()} segundos';
     return Column(
       children: [
         ClipRRect(

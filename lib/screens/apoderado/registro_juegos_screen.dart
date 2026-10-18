@@ -1,14 +1,12 @@
 // ============================================================
 // registro_juegos_screen.dart
-// Fecha: 13-10-2026
+// Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v3 — paso F1
+// Versión: v4 — paso F2
 //
-// CAMBIOS v3 respecto a la v2:
-//  - Muestra solo los juegos del PARTICIPANTE ACTIVO (o los "sin
-//    participante" si no hay uno activo), y lo dice en el título.
-//  - El basurero borra solo los juegos de ese participante, ya no los
-//    de todos.
+// CAMBIOS v4 respecto a la v3:
+//  - Cada juego muestra con qué PARÁMETROS se jugó (la variante), si
+//    los tiene (los juegos anteriores a F2 no).
 //
 // Herramienta del diseñador (Configuración → Datos de prueba): todas
 // las métricas crudas de cada juego.
@@ -16,6 +14,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../modelos/parametros_juego.dart';
 import '../../modelos/registro_juego.dart';
 import '../../servicios/almacenamiento_juegos.dart';
 import '../../servicios/servicio_participantes.dart';
@@ -127,6 +126,11 @@ class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
             'Postura cero: adelante ${r.ceroAdelante.toStringAsFixed(0)}, lado ${r.ceroLateral.toStringAsFixed(0)}',
             style: Textos.secundario,
           ),
+          if (r.parametros != null) ...[
+            const SizedBox(height: 4),
+            Text(_variante(ParametrosJuego.desdeJson(r.parametros!)),
+                style: Textos.secundario.copyWith(color: Colores.bosque)),
+          ],
           const Divider(height: 20, color: Colores.linea),
           for (final p in r.poses) ...[
             Text('${p.indice + 1}. ${p.instruccion} — ${p.resultado}', style: Textos.cuerpoDestacado),
@@ -142,6 +146,14 @@ class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
       ),
     );
   }
+
+  /// Resumen de la variante, ej.: "Variante: ángulo 18 · margen ±9 · …".
+  static String _variante(ParametrosJuego p) =>
+      'Variante: ángulo ${p.anguloLateral.round()} · margen ±${p.margenLateral.round()} · '
+      'adelante ±${p.margenAdelante.round()}/±${p.margenAdelanteCentro.round()} · '
+      'mantener ${p.segundosMantener.round()} s · pista ${p.segundosPista.round()} s · '
+      'ayuda ${p.segundosAyuda.round()} s · espejo ${p.espejo ? 'sí' : 'no'} · '
+      '×${p.amplificacion.toStringAsFixed(1)}';
 
   static String _seg(double s) => '${s.toStringAsFixed(1).replaceAll('.', ',')} s';
 
