@@ -1,8 +1,12 @@
 // ============================================================
 // pantalla_principal.dart
-// Fecha: 11-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso C3 (contenedor de los dos mundos)
+// Versión: v2 — paso F4
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Anota en el registro de uso cada cambio de mundo, y si se pasó al
+//    mundo del niño desde la actividad sugerida del apoderado.
 //
 // Contiene los dos mundos y la barra inferior para cambiar entre ellos.
 // DECISIONES:
@@ -15,6 +19,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../servicios/registro_uso.dart';
 import '../servicios/servicio_ble.dart';
 import '../widgets/barra_mundos.dart';
 import 'apoderado/inicio_apoderado.dart';
@@ -36,7 +41,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     ServicioBle.instancia.iniciar();
   }
 
-  void _cambiar(Mundo nuevo) => setState(() => _mundo = nuevo);
+  void _cambiar(Mundo nuevo, {String? motivo}) {
+    if (nuevo != _mundo) RegistroUso.anotar('mundo', dato: motivo ?? nuevo.name);
+    setState(() => _mundo = nuevo);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,11 +54,13 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         children: [
           // Cruce entre mundos: la actividad sugerida pasa al mundo niño
           // directamente (va del adulto al niño, no necesita puerta).
-          InicioApoderado(alIrAlMundoNino: () => _cambiar(Mundo.nino)),
+          InicioApoderado(
+            alIrAlMundoNino: () => _cambiar(Mundo.nino, motivo: 'nino_por_actividad_sugerida'),
+          ),
           const InicioNino(),
         ],
       ),
-      bottomNavigationBar: BarraMundos(actual: _mundo, alCambiar: _cambiar),
+      bottomNavigationBar: BarraMundos(actual: _mundo, alCambiar: (m) => _cambiar(m)),
     );
   }
 }

@@ -1,13 +1,21 @@
 // ============================================================
 // registro_juego.dart
-// Fecha: 18-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v4 — paso F3
+// Versión: v5 — paso F4
 //
-// CAMBIOS v4 respecto a la v3:
-//  - Cada juego guarda qué TIPO DE CERO usó: 'automatico', 'calibrado'
-//    o 'automatico_sin_calibracion' (se pidió calibrado pero el
-//    participante no tenía). null en juegos anteriores a F3.
+// CAMBIOS v5 respecto a la v4:
+//  - Cada juego guarda su LÍNEA DE EVENTOS (`eventos`): qué pasó y en
+//    qué milisegundo desde el inicio del juego (viñeta, "¡Vamos!",
+//    entró/salió de la zona, pista, ayuda y su respuesta, completó,
+//    pausa, salida…). Ver la lista de tipos en EventoJuego.
+//  - Cada pose guarda su RECORRIDO (`recorrido`): cada lectura del
+//    cinturón desde "¡Vamos!" hasta completarla o saltarla (~3 por
+//    segundo): ms desde "¡Vamos!", inclinación lateral y hacia adelante,
+//    ya relativas a la postura cero.
+//  - Cada pose guarda también su OBJETIVO y sus MÁRGENES, para poder
+//    analizar el recorrido después (analisis_recorrido.dart).
+//  - Todo es opcional: los juegos anteriores a F4 se leen igual.
 //
 // Lo que se guarda de cada juego jugado. Lo verá el APODERADO (y sirve
 // para el análisis del testeo); el niño nunca ve estos números.
@@ -40,7 +48,20 @@ class MetricaPose {
   int ayudasOfrecidas = 0;
   String resultado = 'intentada'; // 'completada' | 'intentada'
 
+  // F4: objetivo y márgenes de la pose (unidades, relativas al cero).
+  double? objetivoLateral;
+  double? objetivoAdelante;
+  double? margenLateral;
+  double? margenAdelante; // null = no se evaluaba adelante
+
+  // F4: recorrido. Tres listas del mismo largo.
+  final List<int> recorridoMs = []; // ms desde "¡Vamos!"
+  final List<double> recorridoLateral = [];
+  final List<double> recorridoAdelante = [];
+
   MetricaPose({required this.indice, required this.instruccion});
+
+  bool get tieneRecorrido => recorridoMs.isNotEmpty && objetivoLateral != null;
 
   bool get completada => resultado == 'completada';
 
@@ -53,6 +74,15 @@ class MetricaPose {
         'pistasUsadas': pistasUsadas,
         'ayudasOfrecidas': ayudasOfrecidas,
         'resultado': resultado,
+        'objetivoLateral': objetivoLateral,
+        'objetivoAdelante': objetivoAdelante,
+        'margenLateral': margenLateral,
+        'margenAdelante': margenAdelante,
+        'recorrido': {
+          'ms': recorridoMs,
+          'lateral': recorridoLateral,
+          'adelante': recorridoAdelante,
+        },
       };
 
   factory MetricaPose.desdeJson(Map<String, dynamic> j) {
@@ -66,8 +96,65 @@ class MetricaPose {
     m.pistasUsadas = (j['pistasUsadas'] as num?)?.toInt() ?? 0;
     m.ayudasOfrecidas = (j['ayudasOfrecidas'] as num?)?.toInt() ?? 0;
     m.resultado = j['resultado'] as String? ?? 'intentada';
+    m.objetivoLateral = (j['objetivoLateral'] as num?)?.toDouble();
+    m.objetivoAdelante = (j['objetivoAdelante'] as num?)?.toDouble();
+    m.margenLateral = (j['margenLateral'] as num?)?.toDouble();
+    m.margenAdelante = (j['margenAdelante'] as num?)?.toDouble();
+    final r = j['recorrido'];
+    if (r is Map<String, dynamic>) {
+      final ms = (r['ms'] as List?)?.map((e) => (e as num).toInt()).toList() ?? [];
+      final la = (r['lateral'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [];
+      final ad = (r['adelante'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [];
+      // Solo si las tres listas calzan (si no, datos dañados).
+      if (ms.length == la.length && ms.length == ad.length) {
+        m.recorridoMs.addAll(ms);
+        m.recorridoLateral.addAll(la);
+        m.recorridoAdelante.addAll(ad);
+      }
+    }
     return m;
   }
+}
+
+/// Un evento del juego, en orden. `ms`: milisegundos desde el inicio
+/// del juego. `pose`: índice de la pose (null si no aplica).
+///
+/// Tipos (`tipo`):
+///   cero          se fijó la postura cero (dato: automatico / calibrado…)
+///   vineta        apareció la explicación (viñetas) de una pose
+///   vamos         el niño tocó "¡Vamos!"
+///   entro         entró a la zona de la pose
+///   salio         salió de la zona (más de la gracia)
+///   pista         apareció la pista
+///   ayuda         Quique ofreció ayuda
+///   ayuda_resp    qué eligió (dato: seguir / saltar / salir)
+///   completo      completó la pose (empieza la celebración)
+///   pausa         abrió la pausa
+///   pausa_resp    qué eligió (dato: seguir / salir)
+///   fin           terminó el juego (llegó al cierre)
+///   salida        salió del juego antes de terminar
+///   otra_vez      tocó "Otra vez" en el cierre
+class EventoJuego {
+  final int ms;
+  final String tipo;
+  final int? pose;
+  final String? dato;
+
+  const EventoJuego(this.ms, this.tipo, {this.pose, this.dato});
+
+  Map<String, dynamic> toJson() => {
+        'ms': ms,
+        'tipo': tipo,
+        if (pose != null) 'pose': pose,
+        if (dato != null) 'dato': dato,
+      };
+
+  factory EventoJuego.desdeJson(Map<String, dynamic> j) => EventoJuego(
+        (j['ms'] as num?)?.toInt() ?? 0,
+        j['tipo'] as String? ?? '',
+        pose: (j['pose'] as num?)?.toInt(),
+        dato: j['dato'] as String?,
+      );
 }
 
 class RegistroJuego {
@@ -82,6 +169,17 @@ class RegistroJuego {
   double ceroAdelante = 0; // postura cero usada (unidades)
   double ceroLateral = 0;
   final List<MetricaPose> poses = [];
+  final List<EventoJuego> eventos = []; // F4: línea de eventos, en orden
+
+  /// Agrega un evento con la hora actual (ms desde el inicio del juego).
+  void evento(String tipo, {int? pose, String? dato}) {
+    eventos.add(EventoJuego(
+      DateTime.now().difference(inicio).inMilliseconds,
+      tipo,
+      pose: pose,
+      dato: dato,
+    ));
+  }
 
   RegistroJuego({required this.juego, required this.inicio});
 
@@ -101,6 +199,7 @@ class RegistroJuego {
         'ceroAdelante': ceroAdelante,
         'ceroLateral': ceroLateral,
         'poses': poses.map((p) => p.toJson()).toList(),
+        'eventos': eventos.map((e) => e.toJson()).toList(),
       };
 
   factory RegistroJuego.desdeJson(Map<String, dynamic> j) {
@@ -122,6 +221,12 @@ class RegistroJuego {
     if (lista is List) {
       for (final p in lista) {
         if (p is Map<String, dynamic>) r.poses.add(MetricaPose.desdeJson(p));
+      }
+    }
+    final ev = j['eventos'];
+    if (ev is List) {
+      for (final e in ev) {
+        if (e is Map<String, dynamic>) r.eventos.add(EventoJuego.desdeJson(e));
       }
     }
     return r;

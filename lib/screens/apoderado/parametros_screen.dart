@@ -2,13 +2,12 @@
 // parametros_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v5 — paso F7.3
+// Versión: v6 — paso F4
 //
-// CAMBIOS v5 respecto a la v4:
-//  - Se quita "El apoderado ve el criterio calibrado": el apoderado ve
-//    ahora lo que registró el cinturón, así que lo decide "El cinturón
-//    registra con la calibración". La sección pasa a llamarse
-//    "Cinturón".
+// CAMBIOS v6 respecto a la v5:
+//  - Nueva sección "Análisis de recorridos": los tres umbrales con que
+//    se leen los recorridos en Datos de prueba. No cambian el juego, y
+//    se aplican también a los juegos ya jugados.
 //
 // Herramienta del INVESTIGADOR (Configuración → Parámetros del juego):
 // cambia cómo se comporta el juego sin recompilar, para probar
@@ -187,6 +186,44 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
                     : 'No: el cinturón registra siempre con el umbral fijo. Es lo que ve el apoderado.',
                 valor: _p.cinturonCalibrado,
                 alCambiar: (v) => _cambiar(_p.copyWith(cinturonCalibrado: v), guardar: true),
+              ),
+
+              _seccion('Análisis de recorridos'),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(4, 0, 4, 10),
+                child: Text(
+                  'Solo cambian cómo se LEEN los recorridos en Datos de prueba: juegos y en la '
+                  'exportación. No cambian el juego, y se aplican también a los juegos ya jugados.',
+                  style: Textos.secundario,
+                ),
+              ),
+              _deslizador(
+                titulo: 'Cuánto moverse para que cuente',
+                ayuda: '"Primer movimiento": la primera vez que se aleja de donde partió más que '
+                    'esto (¿hacia la pose o al revés?). También: cuánto tiene que acercarse '
+                    'después de una pista para decir que la pista sirvió.',
+                valor: _p.umbralMovimiento,
+                rango: rangoUmbralMovimiento,
+                texto: '${_p.umbralMovimiento.round()} u ${_grados(_p.umbralMovimiento)}',
+                alCambiar: (v, g) => _cambiar(_p.copyWith(umbralMovimiento: v), guardar: g),
+              ),
+              _deslizador(
+                titulo: 'Qué es "llegó cerca"',
+                ayuda: '"Llegó cerca sin entrar": nunca entró a la zona, pero estuvo a menos de '
+                    'este múltiplo del margen de la pose (×1,5 con margen 9 = a menos de 13,5 u).',
+                valor: _p.factorCercaAnalisis,
+                rango: rangoFactorCercaAnalisis,
+                texto: '× ${_p.factorCercaAnalisis.toStringAsFixed(1).replaceAll('.', ',')} el margen',
+                alCambiar: (v, g) => _cambiar(_p.copyWith(factorCercaAnalisis: v), guardar: g),
+              ),
+              _deslizador(
+                titulo: 'Segundos para ver si la pista sirvió',
+                ayuda: 'Después de que aparece la pista, cuántos segundos se miran para ver si '
+                    'se acercó a la pose.',
+                valor: _p.segundosVentanaPista,
+                rango: rangoSegundosVentanaPista,
+                texto: '${_p.segundosVentanaPista.round()} s',
+                alCambiar: (v, g) => _cambiar(_p.copyWith(segundosVentanaPista: v), guardar: g),
               ),
 
               _seccion('Investigador'),

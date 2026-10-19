@@ -1,14 +1,16 @@
 // ============================================================
 // exportar_datos.dart
-// Fecha: 18-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v6 — paso F7.2
+// Versión: v7 — paso F4
 //
-// CAMBIOS v6 respecto a la v5:
-//  - Se exportan los EPISODIOS DEL CINTURÓN (su cola) de cada
-//    participante ('episodiosCinturon'), y los resúmenes del monitoreo
-//    incluyen los recuperados del cinturón y la validación
-//    ('validacionCinturon'). Formato 'quique-testeo-v6'.
+// CAMBIOS v7 respecto a la v6:
+//  - Cada juego exportado incluye sus 'eventos' y el 'recorrido' de cada
+//    pose (vienen en el registro del juego), y además 'analisisPoses':
+//    el análisis de cada recorrido con los umbrales vigentes.
+//  - Se exporta el registro de uso de la app de cada participante
+//    ('usoApp').
+//  - Formato 'quique-testeo-v7'.
 //
 // Arma un texto JSON con los datos de un participante (o de todos) y
 // lo copia al PORTAPAPELES. Desde ahí se pega donde convenga: un correo
@@ -32,6 +34,9 @@ import '../modelos/registro_juego.dart';
 import '../modelos/sesion_monitoreo.dart';
 import 'almacenamiento_juegos.dart';
 import 'analisis_monitoreo.dart';
+import 'analisis_recorrido.dart';
+import 'registro_uso.dart';
+import 'servicio_parametros.dart';
 import 'servicio_cinturon.dart';
 import 'servicio_monitoreo.dart';
 import 'servicio_participantes.dart';
@@ -40,7 +45,7 @@ import 'servicio_participantes.dart';
 // Identifica la versión del formato exportado. Si en un paso futuro se
 // agregan datos (eventos, recorrido…), se sube el número para saber
 // qué contiene cada exportación.
-const String formatoExportacion = 'quique-testeo-v6';
+const String formatoExportacion = 'quique-testeo-v7';
 
 class ExportarDatos {
   ExportarDatos._();
@@ -87,6 +92,19 @@ class ExportarDatos {
     return {'criterio': v.criterio.name, 'cinturon': v.cinturon, 'app': v.app};
   }
 
+  /// Un juego con el análisis de los recorridos de sus poses.
+  static Map<String, dynamic> _juego(RegistroJuego r) {
+    final p = ServicioParametros.instancia.actual.value;
+    return {
+      ...r.toJson(),
+      'analisisPoses': [for (final m in r.poses) AnalisisRecorrido.pose(r, m, p)?.toJson()],
+    };
+  }
+
+  /// Registro de uso de la app de un participante.
+  static List<Map<String, dynamic>> _uso(String? codigo) =>
+      RegistroUso.de(codigo).map((e) => e.toJson()).toList();
+
   /// Episodios del cinturón de un participante.
   static List<Map<String, dynamic>> _episodiosCinturon(String? codigo) =>
       ServicioCinturon.instancia.de(codigo).map((e) => e.toJson()).toList();
@@ -98,9 +116,10 @@ class ExportarDatos {
       'formato': formatoExportacion,
       'exportado': DateTime.now().toIso8601String(),
       'participante': _perfil(p, incluirNombre),
-      'juegos': juegos.map((r) => r.toJson()).toList(),
+      'juegos': juegos.map(_juego).toList(),
       'monitoreo': _sesiones(p.codigo, juegos, conLecturas: true),
       'episodiosCinturon': _episodiosCinturon(p.codigo),
+      'usoApp': _uso(p.codigo),
     };
     return const JsonEncoder.withIndent('  ').convert(datos);
   }
@@ -113,9 +132,10 @@ class ExportarDatos {
       final juegos = await AlmacenamientoJuegos.cargarDe(p.codigo);
       lista.add({
         ..._perfil(p, incluirNombre),
-        'juegos': juegos.map((r) => r.toJson()).toList(),
+        'juegos': juegos.map(_juego).toList(),
         'monitoreo': _sesiones(p.codigo, juegos, conLecturas: false),
         'episodiosCinturon': _episodiosCinturon(p.codigo),
+        'usoApp': _uso(p.codigo),
       });
     }
     final sinParticipante = await AlmacenamientoJuegos.cargarDe(null);

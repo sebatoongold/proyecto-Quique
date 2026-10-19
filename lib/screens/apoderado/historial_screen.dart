@@ -2,16 +2,11 @@
 // historial_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v3 — paso F7.3
+// Versión: v4 — paso F4
 //
-// CAMBIOS v3 respecto a la v2:
-//  - La pestaña POSTURA ya no es un espacio reservado: muestra la línea
-//    de tiempo del día con los episodios que registró el cinturón
-//    (widgets/linea_tiempo_postura.dart).
-//  - Abre en Postura (o en la pestaña que se pida con `inicial`).
-//  - La pantalla ya no es una sola lista: Postura ocupa el alto
-//    completo (panel fijo, horas con foco y semana fija); Juegos se
-//    desplaza como antes.
+// CAMBIOS v4 respecto a la v3:
+//  - Anota en el registro de uso cuándo se abre el Historial (y desde
+//    dónde: `origen`) y cada cambio de pestaña.
 //
 // Dos pestañas que responden dos preguntas distintas, sobre la misma
 // línea de tiempo:
@@ -30,6 +25,7 @@ import 'package:flutter/material.dart';
 import '../../modelos/registro_juego.dart';
 import '../../servicios/almacenamiento_juegos.dart';
 import '../../servicios/analisis_juegos.dart';
+import '../../servicios/registro_uso.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/linea_tiempo_postura.dart';
@@ -38,8 +34,13 @@ enum SeccionHistorial { postura, juegos }
 
 class HistorialScreen extends StatefulWidget {
   final SeccionHistorial inicial;
+  final String origen; // para el registro de uso: desde dónde se abrió
 
-  const HistorialScreen({super.key, this.inicial = SeccionHistorial.postura});
+  const HistorialScreen({
+    super.key,
+    this.inicial = SeccionHistorial.postura,
+    this.origen = 'boton_historial',
+  });
 
   @override
   State<HistorialScreen> createState() => _HistorialScreenState();
@@ -47,6 +48,12 @@ class HistorialScreen extends StatefulWidget {
 
 class _HistorialScreenState extends State<HistorialScreen> {
   late SeccionHistorial _seccion = widget.inicial;
+
+  @override
+  void initState() {
+    super.initState();
+    RegistroUso.anotar('historial', dato: '${widget.inicial.name} (desde ${widget.origen})');
+  }
   late final Future<List<RegistroJuego>> _registros = AlmacenamientoJuegos.cargarDelActivo();
 
   @override
@@ -76,7 +83,10 @@ class _HistorialScreenState extends State<HistorialScreen> {
                   ),
                 ],
                 selected: {_seccion},
-                onSelectionChanged: (s) => setState(() => _seccion = s.first),
+                onSelectionChanged: (s) {
+                  RegistroUso.anotar('historial', dato: s.first.name);
+                  setState(() => _seccion = s.first);
+                },
               ),
               const SizedBox(height: 14),
               Expanded(

@@ -1,11 +1,17 @@
 // ============================================================
 // registro_juegos_screen.dart
-// Fecha: 18-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v5 — paso F3
+// Versión: v6 — paso F4
 //
-// CAMBIOS v5 respecto a la v4:
-//  - Muestra qué tipo de cero usó cada juego (automático o calibrado).
+// CAMBIOS v6 respecto a la v5:
+//  - Cada pose muestra el ANÁLISIS DE SU RECORRIDO (primer movimiento,
+//    si se pasó de largo, si llegó cerca sin entrar, si las pistas
+//    sirvieron, tiempo en las viñetas) y un GRÁFICO del recorrido con
+//    la zona de la pose y las pistas. Usa los umbrales de Parámetros →
+//    Análisis de recorridos.
+//  - Si el juego quedó interrumpido, dice dónde abandonó.
+//  - Botón "Eventos" en cada juego: la línea de eventos con sus horas.
 //
 // Herramienta del diseñador (Configuración → Datos de prueba): todas
 // las métricas crudas de cada juego.
@@ -16,9 +22,12 @@ import 'package:flutter/material.dart';
 import '../../modelos/parametros_juego.dart';
 import '../../modelos/registro_juego.dart';
 import '../../servicios/almacenamiento_juegos.dart';
+import '../../servicios/analisis_recorrido.dart';
+import '../../servicios/servicio_parametros.dart';
 import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
+import '../../widgets/grafico_recorrido.dart';
 
 class RegistroJuegosScreen extends StatefulWidget {
   const RegistroJuegosScreen({super.key});
@@ -125,6 +134,19 @@ class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
             'Postura cero${_tipoCero(r.tipoCero)}: adelante ${r.ceroAdelante.toStringAsFixed(0)}, lado ${r.ceroLateral.toStringAsFixed(0)}',
             style: Textos.secundario,
           ),
+          if (AnalisisRecorrido.dondeAbandono(r) != null)
+            Text('Abandonó en: ${AnalisisRecorrido.dondeAbandono(r)}',
+                style: Textos.secundario.copyWith(color: Colores.ambar)),
+          if (r.eventos.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+                icon: const Icon(Icons.list_rounded, size: 18),
+                label: Text('Eventos (${r.eventos.length})'),
+                onPressed: () => _verEventos(r),
+              ),
+            ),
           if (r.parametros != null) ...[
             const SizedBox(height: 4),
             Text(_variante(ParametrosJuego.desdeJson(r.parametros!)),
@@ -139,6 +161,7 @@ class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
               'Salidas: ${p.salidasDeZona} · Pistas: ${p.pistasUsadas} · Ayudas: ${p.ayudasOfrecidas}',
               style: Textos.secundario,
             ),
+            ..._analisis(r, p),
             const SizedBox(height: 8),
           ],
         ],
@@ -160,6 +183,83 @@ class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
         'automatico_sin_calibracion' => ' (automática: no tenía calibración)',
         _ => '',
       };
+
+  /// Análisis y gráfico del recorrido de una pose (si lo tiene).
+  List<Widget> _analisis(RegistroJuego r, MetricaPose p) {
+    final a = AnalisisRecorrido.pose(r, p, ServicioParametros.instancia.actual.value);
+    if (a == null) return const [];
+    final primer = switch (a.primerMovimiento) {
+      'correcto' => 'hacia la pose',
+      'contrario' => 'AL REVÉS',
+      'sin_movimiento' => 'no se movió',
+      _ => '—',
+    };
+    // Pistas en ms desde "¡Vamos!" (para marcarlas en el gráfico).
+    int? msVamos;
+    for (final e in r.eventos) {
+      if (e.tipo == 'vamos' && e.pose == p.indice) msVamos = e.ms;
+    }
+    final pistas = [
+      if (msVamos != null)
+        for (final e in r.eventos)
+          if (e.tipo == 'pista' && e.pose == p.indice) e.ms - msVamos,
+    ];
+    return [
+      const SizedBox(height: 4),
+      Text(
+        'Primer movimiento: $primer'
+        '${a.segundosPrimerMovimiento == null ? '' : ' (a los ${_seg(a.segundosPrimerMovimiento!)})'} · '
+        'Se pasó de largo: ${a.sePasoDeLargo ? 'sí' : 'no'} · '
+        'Llegó cerca sin entrar: ${a.llegoCercaSinEntrar ? 'sí' : 'no'}'
+        '${a.pistas == 0 ? '' : ' · Pistas que sirvieron: ${a.pistasQueSirvieron} de ${a.pistas}'}'
+        '${a.segundosEnVineta == null ? '' : ' · En las viñetas: ${_seg(a.segundosEnVineta!)}'}',
+        style: Textos.secundario.copyWith(
+          color: a.primerMovimiento == 'contrario' ? Colores.ambar : Colores.azul,
+        ),
+      ),
+      const SizedBox(height: 6),
+      GraficoRecorrido(pose: p, ejeLateral: a.ejePrincipal == 'lateral', pistasMs: pistas),
+      Text(
+        'Eje ${a.ejePrincipal == 'lateral' ? 'lateral' : 'adelante/atrás'} · verde: zona de la pose · '
+        'ámbar: pista',
+        style: Textos.secundario.copyWith(fontSize: 11),
+      ),
+    ];
+  }
+
+  /// La línea de eventos de un juego, con sus horas.
+  Future<void> _verEventos(RegistroJuego r) => showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Eventos del juego'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final e in r.eventos)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      '${_horaExacta(r.inicio.add(Duration(milliseconds: e.ms)))}  '
+                      '${e.tipo}${e.pose == null ? '' : ' · pose ${e.pose! + 1}'}'
+                      '${e.dato == null ? '' : ' · ${e.dato}'}',
+                      style: Textos.cuerpo.copyWith(fontSize: 14),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cerrar')),
+          ],
+        ),
+      );
+
+  static String _horaExacta(DateTime d) {
+    String dos(int n) => n.toString().padLeft(2, '0');
+    return '${dos(d.hour)}:${dos(d.minute)}:${dos(d.second)}';
+  }
 
   static String _seg(double s) => '${s.toStringAsFixed(1).replaceAll('.', ',')} s';
 

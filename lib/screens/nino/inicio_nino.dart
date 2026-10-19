@@ -1,13 +1,12 @@
 // ============================================================
 // inicio_nino.dart
-// Fecha: 13-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v3 — paso F1
+// Versión: v4 — paso F4
 //
-// CAMBIOS v3 respecto a la v2:
-//  - Saluda con el nombre del PARTICIPANTE ACTIVO (o su código si no
-//    tiene nombre). Sin participante, dice solo "¡Hola!". Ya no usa el
-//    nombre de ejemplo "Pablo".
+// CAMBIOS v4 respecto a la v3:
+//  - Anota en el registro de uso que el juego lo abrió el niño con
+//    "Jugar".
 //
 // Inicio provisorio del niño: Quique (marcador) y el botón "Jugar".
 // ============================================================
@@ -15,6 +14,7 @@
 import 'package:flutter/material.dart';
 
 import '../../modelos/participante.dart';
+import '../../servicios/registro_uso.dart';
 import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
@@ -66,9 +66,12 @@ class InicioNino extends StatelessWidget {
                     icon: const Icon(Icons.play_arrow_rounded, size: 30),
                     label: const Text('Jugar'),
                     // El juego se abre a pantalla completa, sin la barra de mundos.
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const EjecucionScreen()),
-                    ),
+                    onPressed: () {
+                      RegistroUso.anotar('juego_desde', dato: 'boton_jugar');
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const EjecucionScreen()),
+                      );
+                    },
                   ),
                 ],
               ),

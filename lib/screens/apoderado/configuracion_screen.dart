@@ -2,11 +2,12 @@
 // configuracion_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v8 — paso F7.3
+// Versión: v9 — paso F4
 //
-// CAMBIOS v8 respecto a la v7:
-//  - Nueva opción "Periodo de observación" en Testeo: el monitoreo con
-//    la pregunta al apoderado, que antes estaba en el Resumen de hoy.
+// CAMBIOS v9 respecto a la v8:
+//  - Nueva herramienta "Datos de prueba: uso de la app": el registro de
+//    uso del participante activo (mundos, puerta parental, Historial y
+//    cómo se navegó la línea de tiempo).
 //
 // Sección "Testeo": participante activo (crear, elegir, exportar).
 //
@@ -32,6 +33,7 @@ import 'calibracion_screen.dart';
 import 'cinturon_screen.dart';
 import 'monitoreo_datos_screen.dart';
 import 'observacion_screen.dart';
+import 'uso_datos_screen.dart';
 import 'parametros_screen.dart';
 import 'participantes_screen.dart';
 import 'registro_juegos_screen.dart';
@@ -152,6 +154,14 @@ class ConfiguracionScreen extends StatelessWidget {
                 titulo: 'Datos de prueba: monitoreo',
                 subtitulo: 'Sesiones con los dos criterios (fijo y calibrado)',
                 destino: const MonitoreoDatosScreen(),
+              ),
+              const SizedBox(height: 10),
+              _opcion(
+                context,
+                icono: Icons.touch_app_rounded,
+                titulo: 'Datos de prueba: uso de la app',
+                subtitulo: 'Mundos, puerta parental, Historial y línea de tiempo',
+                destino: const UsoDatosScreen(),
               ),
               const SizedBox(height: 24),
               const Padding(

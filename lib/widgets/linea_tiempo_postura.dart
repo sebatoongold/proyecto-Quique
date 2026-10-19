@@ -2,7 +2,13 @@
 // linea_tiempo_postura.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso F7.3 (Historial → Postura)
+// Versión: v2 — paso F4
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Anota en el registro de uso CÓMO se navega la línea de tiempo:
+//    "desplazo" (arrastró con el dedo; uno por gesto), "toco_hora",
+//    "cambio_dia" y "abrio_mes". Responde si los apoderados usan el
+//    desplazamiento con foco o tocan las filas.
 //
 // La línea de tiempo del día, en tres partes:
 //
@@ -31,6 +37,7 @@ import '../modelos/participante.dart';
 import '../modelos/registro_juego.dart';
 import '../servicios/almacenamiento_juegos.dart';
 import '../servicios/analisis_postura.dart';
+import '../servicios/registro_uso.dart';
 import '../servicios/servicio_cinturon.dart';
 import '../servicios/servicio_participantes.dart';
 import '../tema/colores.dart';
@@ -89,6 +96,7 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
   DateTime _dia = soloDia(DateTime.now());
   List<RegistroJuego> _juegos = const [];
   int _foco = 0; // índice de la hora en foco (0 = la más reciente)
+  bool _arrastrando = false; // el desplazamiento actual lo empezó el dedo
 
   @override
   void initState() {
@@ -141,6 +149,10 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
 
   /// Al soltar, se acomoda para dejar una hora justo en el foco.
   bool _alTerminar(ScrollEndNotification _) {
+    if (_arrastrando) {
+      _arrastrando = false;
+      RegistroUso.anotar('linea_tiempo', dato: 'desplazo');
+    }
     final destino = _foco * altoFilaHora;
     if ((_scroll.offset - destino).abs() > 1) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -157,6 +169,7 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
   }
 
   void _elegirDia(DateTime d) {
+    RegistroUso.anotar('linea_tiempo', dato: 'cambio_dia');
     setState(() {
       _dia = soloDia(d);
       _foco = 0;
@@ -325,14 +338,25 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
               ),
             ),
           ),
-          NotificationListener<ScrollEndNotification>(
-            onNotification: _alTerminar,
-            child: ListView.builder(
-              controller: _scroll,
-              itemExtent: altoFilaHora,
-              padding: EdgeInsets.only(top: arriba, bottom: abajo),
-              itemCount: horas.length,
-              itemBuilder: (context, i) => _filaHora(datos, horas[i], i == _foco, () => _irAHora(i)),
+          NotificationListener<ScrollStartNotification>(
+            // Solo cuenta como "desplazo" si lo empezó el dedo (no la
+            // animación que acomoda la lista).
+            onNotification: (n) {
+              if (n.dragDetails != null) _arrastrando = true;
+              return false;
+            },
+            child: NotificationListener<ScrollEndNotification>(
+              onNotification: _alTerminar,
+              child: ListView.builder(
+                controller: _scroll,
+                itemExtent: altoFilaHora,
+                padding: EdgeInsets.only(top: arriba, bottom: abajo),
+                itemCount: horas.length,
+                itemBuilder: (context, i) => _filaHora(datos, horas[i], i == _foco, () {
+                  RegistroUso.anotar('linea_tiempo', dato: 'toco_hora');
+                  _irAHora(i);
+                }),
+              ),
             ),
           ),
         ],
@@ -484,6 +508,7 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
   }
 
   Future<void> _abrirMes(Set<DateTime> conDatos) async {
+    RegistroUso.anotar('linea_tiempo', dato: 'abrio_mes');
     final elegido = await showModalBottomSheet<DateTime>(
       context: context,
       backgroundColor: Colores.tarjeta,

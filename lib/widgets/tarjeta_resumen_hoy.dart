@@ -2,20 +2,11 @@
 // tarjeta_resumen_hoy.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v3 — paso F7.3
+// Versión: v4 — paso F4
 //
-// CAMBIOS v3 respecto a la v2:
-//  - Ya NO hay que iniciar ni terminar nada: el resumen muestra TODO EL
-//    DÍA con lo que registró el cinturón (su cola), como hará el
-//    producto real. El apoderado no tiene que estar pendiente de cuándo
-//    el niño tiene puesto el cinturón.
-//  - El "monitoreo" con la pregunta de estimación pasó a ser una
-//    herramienta del investigador: Configuración → Periodo de
-//    observación (observacion_screen.dart).
-//  - Tocar la tarjeta abre el Historial en la pestaña Postura (la línea
-//    de tiempo del día).
-//  - Debajo dice cuándo se actualizó por última vez (los datos llegan
-//    cuando la app lee la cola del cinturón).
+// CAMBIOS v4 respecto a la v3:
+//  - Al tocarla, abre el Historial indicando que viene del Resumen de
+//    hoy (para el registro de uso).
 //
 // Muestra las VECES que se encorvó o inclinó (episodios de más de 3 s
 // fuera de los juegos), y en segundo plano el tiempo total, la más
@@ -86,7 +77,7 @@ class _TarjetaResumenHoyState extends State<TarjetaResumenHoy> {
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const HistorialScreen(inicial: SeccionHistorial.postura)),
+          MaterialPageRoute(builder: (_) => const HistorialScreen(inicial: SeccionHistorial.postura, origen: 'resumen_hoy')),
         ),
         child: Padding(
           padding: const EdgeInsets.all(20),

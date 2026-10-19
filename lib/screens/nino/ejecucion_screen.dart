@@ -1,16 +1,19 @@
 // ============================================================
 // ejecucion_screen.dart
-// Fecha: 18-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v6 — paso F3
+// Versión: v7 — paso F4
 //
-// CAMBIOS v6 respecto a la v5:
-//  - TIPO DE CERO: si en el panel está activado "Usar la calibración
-//    del participante" y el participante activo tiene calibración, el
-//    juego usa esa postura neutral como cero y se salta la fase
-//    "siéntate derecho" (va directo a la primera explicación).
-//    Si no, el cero se toma solo al empezar, como antes.
-//  - El registro guarda qué tipo de cero se usó.
+// CAMBIOS v7 respecto a la v6:
+//  - REGISTRO AUTOMÁTICO (para el modo desarrollador): el juego anota
+//    cada evento con su hora (viñeta, "¡Vamos!", entró/salió de la
+//    zona, pista, ayuda y su respuesta, completó, pausa, salida, fin,
+//    "Otra vez"). Ver la lista en registro_juego.dart (EventoJuego).
+//  - RECORRIDO de cada pose: desde "¡Vamos!" se guarda cada lectura
+//    NUEVA del cinturón (no cada cuadro de pantalla), relativa al cero,
+//    mientras no esté en pausa. Junto con el objetivo y los márgenes de
+//    la pose, para analizarlo después (analisis_recorrido.dart).
+//  - El juego se comporta exactamente igual: solo anota.
 //
 // Flujo completo: flujo_nino_actividad_guiada_v1.svg. Sigue pendiente:
 // el botón "Escuchar" (requiere una dependencia de voz) y las
@@ -102,6 +105,8 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   double _adelante = 0;
   double _lateral = 0;
   bool _hayDato = false;
+  DatosPostura? _ultimoDato; // F4: para guardar solo lecturas nuevas en el recorrido
+  DateTime _horaVamos = DateTime.now(); // F4: cuándo tocó "¡Vamos!" en la pose actual
 
   final List<_Muestra> _muestras = [];
   double _ultimoDentro = -100;
@@ -166,6 +171,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         ..ceroAdelante = cal.adelante
         ..ceroLateral = cal.lateral
         ..tipoCero = 'calibrado';
+      _registro.evento('cero', dato: 'calibrado');
       _mostrarExplicacion(0); // sin fase de partida
     } else {
       _registro.tipoCero = _p.ceroCalibrado ? 'automatico_sin_calibracion' : 'automatico';
@@ -209,8 +215,23 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       }
     }
 
+    // F4: recorrido de la pose (solo lecturas nuevas, sin pausa).
+    if (d != null && !identical(d, _ultimoDato)) {
+      _ultimoDato = d;
+      if (_fase == _Fase.pose && !_pausado && ble.conectado) {
+        final m = _metricaActual;
+        if (m != null) {
+          m.recorridoMs.add(DateTime.now().difference(_horaVamos).inMilliseconds);
+          m.recorridoLateral.add(_redondear(d.lateral - _ceroLateral));
+          m.recorridoAdelante.add(_redondear(d.adelante - _ceroAdelante));
+        }
+      }
+    }
+
     setState(() {});
   }
+
+  static double _redondear(double v) => (v * 10).roundToDouble() / 10;
 
   void _revisarPartida(DatosPostura d, double ahora) {
     final m = _Muestra(ahora, d.adelante.toDouble(), d.lateral.toDouble());
@@ -234,6 +255,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       _ceroLateral = sumaL / _muestras.length;
       _registro.ceroAdelante = _ceroAdelante;
       _registro.ceroLateral = _ceroLateral;
+      _registro.evento('cero', dato: _registro.tipoCero);
       _muestras.clear();
       _mostrarExplicacion(0);
     }
@@ -292,7 +314,11 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       _yaEntro = true;
       metrica.segundosHastaEntrar = _tiempoEnPose;
     }
-    if (_estabaDentro && !dentro) metrica.salidasDeZona++;
+    if (_estabaDentro && !dentro) {
+      metrica.salidasDeZona++;
+      _registro.evento('salio', pose: _indicePose);
+    }
+    if (!_estabaDentro && dentro) _registro.evento('entro', pose: _indicePose);
     _estabaDentro = dentro;
 
     // --- Avance y pista de los 20 s ---
@@ -304,6 +330,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         _progreso = _p.segundosMantener;
         metrica.segundosHastaCompletar = _tiempoEnPose;
         metrica.resultado = 'completada';
+        _registro.evento('completo', pose: _indicePose);
         _fase = _Fase.logrado;
         _inicioLogrado = ahora;
         return;
@@ -313,6 +340,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       if (_tiempoSinAvance >= _p.segundosPista && !_pistaActiva) {
         _pistaActiva = true;
         metrica.pistasUsadas++;
+        _registro.evento('pista', pose: _indicePose);
       }
     }
 
@@ -321,6 +349,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       _ayudaAbierta = true;
       _pausado = true;
       metrica.ayudasOfrecidas++;
+      _registro.evento('ayuda', pose: _indicePose);
       // Se abre después de dibujar este cuadro (no en medio del cálculo).
       WidgetsBinding.instance.addPostFrameCallback((_) => _ofrecerAyuda());
     }
@@ -329,12 +358,19 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   void _mostrarExplicacion(int indice) {
     _indicePose = indice;
     _fase = _Fase.explicacion;
+    _registro.evento('vineta', pose: indice);
   }
 
   /// El niño tocó "¡Vamos!": empieza la pose y su registro.
   void _empezarPose() {
     setState(() {
-      _registro.poses.add(MetricaPose(indice: _indicePose, instruccion: _pose.instruccion));
+      _registro.poses.add(MetricaPose(indice: _indicePose, instruccion: _pose.instruccion)
+        ..objetivoLateral = _pose.lateral
+        ..objetivoAdelante = _pose.adelante
+        ..margenLateral = _pose.margenLateral
+        ..margenAdelante = _pose.margenAdelante);
+      _registro.evento('vamos', pose: _indicePose);
+      _horaVamos = DateTime.now();
       _progreso = 0;
       _ultimoDentro = -100;
       _comodidad = _Comodidad.incomodo;
@@ -360,6 +396,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
 
   void _terminar() {
     _fase = _Fase.fin;
+    _registro.evento('fin');
     _registro.completado = !_algunaSaltada &&
         _registro.poses.length == _poses.length &&
         _registro.poses.every((p) => p.completada);
@@ -385,13 +422,17 @@ class _EjecucionScreenState extends State<EjecucionScreen>
 
   /// Salir del juego a medias: queda como interrumpido (sin culpa) y se guarda.
   Future<void> _salirDelJuego() async {
-    if (_fase != _Fase.fin) await _guardarRegistro(interrumpido: true);
+    if (_fase != _Fase.fin) {
+      _registro.evento('salida', pose: _indicePose, dato: _fase.name);
+      await _guardarRegistro(interrumpido: true);
+    }
     if (mounted) Navigator.of(context).pop();
   }
 
   void _reiniciar() {
     setState(() {
       _nuevoRegistro(); // "Otra vez" usa los parámetros vigentes
+      _registro.evento('otra_vez');
       _registroGuardado = false;
       _algunaSaltada = false;
       _racha = null;
@@ -406,6 +447,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   Future<void> _pausar() async {
     if (_pausado) return;
     setState(() => _pausado = true);
+    _registro.evento('pausa', pose: _indicePose);
     final salir = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -425,6 +467,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       ),
     );
     if (!mounted) return;
+    _registro.evento('pausa_resp', pose: _indicePose, dato: salir == true ? 'salir' : 'seguir');
     if (salir == true) {
       await _salirDelJuego();
     } else {
@@ -465,6 +508,11 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     );
     if (!mounted) return;
     _ayudaAbierta = false;
+    _registro.evento('ayuda_resp', pose: _indicePose, dato: switch (opcion) {
+      _OpcionAyuda.saltar => 'saltar',
+      _OpcionAyuda.volverAlRio => 'salir',
+      _ => 'seguir',
+    });
     switch (opcion) {
       case _OpcionAyuda.saltar:
         // Queda como "intentada" (ya es el valor por defecto).

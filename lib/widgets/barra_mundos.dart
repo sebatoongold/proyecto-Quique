@@ -1,8 +1,12 @@
 // ============================================================
 // barra_mundos.dart
-// Fecha: 11-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso C3 (barra de dos mundos + puerta parental)
+// Versión: v2 — paso F4
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Anota en el registro de uso cada intento de la puerta parental:
+//    "corto" (un toque), "soltada" (se soltó antes de tiempo) u "ok".
 //
 // La barra inferior cambia de MUNDO (no de sección):
 //  - De Apoderado a Niño: un toque, cambio directo.
@@ -14,6 +18,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../servicios/registro_uso.dart';
 import '../tema/colores.dart';
 
 // ---------- PARÁMETRO AJUSTABLE ----------
@@ -40,6 +45,7 @@ class _BarraMundosState extends State<BarraMundos>
     duration: duracionPuertaParental,
   )..addStatusListener((estado) {
       if (estado == AnimationStatus.completed) {
+        RegistroUso.anotar('puerta_intento', dato: 'ok');
         _puerta.reset();
         widget.alCambiar(Mundo.apoderado);
       }
@@ -53,6 +59,7 @@ class _BarraMundosState extends State<BarraMundos>
 
   void _soltar() {
     if (_puerta.isCompleted) return;
+    RegistroUso.anotar('puerta_intento', dato: _puerta.value < 0.15 ? 'corto' : 'soltada');
     // Toque corto: probablemente alguien no sabe que hay que mantener.
     if (_puerta.value < 0.15) {
       ScaffoldMessenger.of(context)

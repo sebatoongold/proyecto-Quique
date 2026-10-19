@@ -1,18 +1,18 @@
 // ============================================================
 // main.dart
-// Fecha: 18-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v7 — paso F7.2
+// Versión: v8 — paso F4
 //
-// CAMBIOS v7 respecto a la v6:
-//  - Inicia ServicioCinturon: carga los episodios ya recibidos del
-//    cinturón y, cada vez que se conecta, sincroniza su cola y le envía
-//    la calibración del participante activo.
+// CAMBIOS v8 respecto a la v7:
+//  - Inicia el registro de uso de la app (modo desarrollador) y anota
+//    que se abrió la app.
 // ============================================================
 
 import 'package:flutter/material.dart';
 
 import 'screens/pantalla_principal.dart';
+import 'servicios/registro_uso.dart';
 import 'servicios/servicio_cinturon.dart';
 import 'servicios/servicio_monitoreo.dart';
 import 'servicios/servicio_parametros.dart';
@@ -26,6 +26,8 @@ Future<void> main() async {
   await ServicioParametros.instancia.iniciar();
   await ServicioMonitoreo.instancia.iniciar();
   await ServicioCinturon.instancia.iniciar();
+  await RegistroUso.iniciar();
+  RegistroUso.anotar('app_abierta');
   runApp(const MyApp());
 }
 
