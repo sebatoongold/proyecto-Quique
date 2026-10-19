@@ -2,15 +2,12 @@
 // parametros_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v7 — paso F6.2
+// Versión: v8 — paso F8
 //
-// CAMBIOS v7 respecto a la v6:
-//  - Nueva sección "Juego frontal" («De lo alto a lo bajo»): desde
-//    dónde cuenta el alto, cuánto curvarse en el medio camino y su
-//    margen, desde dónde cuenta la bolita, sus segundos, y el tipo de
-//    cero (fijo / calibrado / automático).
-//  - Las secciones anteriores ("Poses", "Postura cero") se aclaran como
-//    del juego lateral («Imita a Quique»).
+// CAMBIOS v8 respecto a la v7:
+//  - Nueva sección "Pista y celebración" (después de "Tiempos"): flecha
+//    que late sobre la figura, vibración de la pista, celebración animada
+//    o sencilla, y cuántos segundos dura la celebración de cada pose.
 //
 // Herramienta del INVESTIGADOR (Configuración → Parámetros del juego):
 // cambia cómo se comporta el juego sin recompilar, para probar
@@ -160,6 +157,43 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
                 rango: rangoSegundosAyuda,
                 texto: '${_p.segundosAyuda.round()} s',
                 alCambiar: (v, g) => _cambiar(_p.copyWith(segundosAyuda: v), guardar: g),
+              ),
+
+              _seccion('Pista y celebración'),
+              _interruptor(
+                titulo: 'Pista con flecha que late sobre la figura',
+                ayuda: _p.pistaAnimada
+                    ? 'Sí: con la pista, una flecha ámbar late sobre la figura grande, desde cómo '
+                        'está sentado hasta la pose. Si lo que falta no se ve en esa vista (p. ej. '
+                        'encorvarse en «Imita a Quique»), queda la flecha de la miniatura.'
+                    : 'No: la pista solo destaca la miniatura de la esquina, como antes.',
+                valor: _p.pistaAnimada,
+                alCambiar: (v) => _cambiar(_p.copyWith(pistaAnimada: v), guardar: true),
+              ),
+              _interruptor(
+                titulo: 'Vibrar cuando aparece la pista',
+                ayuda: _p.vibrarPista
+                    ? 'Sí: una vibración corta (solo se nota si el niño tiene el teléfono en la mano).'
+                    : 'No vibra.',
+                valor: _p.vibrarPista,
+                alCambiar: (v) => _cambiar(_p.copyWith(vibrarPista: v), guardar: true),
+              ),
+              _interruptor(
+                titulo: 'Celebración animada',
+                ayuda: _p.celebracionAnimada
+                    ? 'Sí: al lograr cada pose, la figura da un saltito y sale confeti. Al terminar, '
+                        'más confeti y las poses con su marca ✓.'
+                    : 'No: la celebración sencilla de antes (texto y cara de Quique).',
+                valor: _p.celebracionAnimada,
+                alCambiar: (v) => _cambiar(_p.copyWith(celebracionAnimada: v), guardar: true),
+              ),
+              _deslizador(
+                titulo: 'Segundos de celebración de cada pose',
+                ayuda: 'Cuánto dura el "¡Lo lograste!" antes de pasar a la siguiente pose.',
+                valor: _p.segundosCelebracion,
+                rango: rangoSegundosCelebracion,
+                texto: '${_p.segundosCelebracion.toStringAsFixed(1).replaceAll('.', ',')} s',
+                alCambiar: (v, g) => _cambiar(_p.copyWith(segundosCelebracion: v), guardar: g),
               ),
 
               _seccion('Juego frontal'),

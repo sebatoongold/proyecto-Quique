@@ -2,21 +2,22 @@
 // ejecucion_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v8 — paso F6.2
+// Versión: v9 — paso F8
 //
-// CAMBIOS v8 respecto a la v7:
-//  - La pantalla recibe QUÉ JUEGO jugar (`juego`, ver modelos/juego.dart):
-//    su nombre, su vista (frente o costado) y sus poses. Por defecto,
-//    «Imita a Quique», así que todo lo anterior funciona igual.
-//  - Poses con ZONA DE LÍMITES en el eje adelante (zonas de un solo
-//    lado): se evalúan con Pose.errorAdelanteDe(). La figura dibuja esa
-//    zona de costado.
-//  - Cada pose puede tener sus propios segundos (la bolita dura menos) y
-//    sus brazos (abrazando las rodillas).
-//  - CERO del juego frontal (Parámetros → Juego frontal): 'fijo' (el
-//    cero del sensor; parte directo en la primera viñeta), 'calibrado'
-//    o 'automatico'. El juego lateral sigue como antes.
-//  - Pista de costado: "Curva un poquito más la espalda" / "Endereza…".
+// CAMBIOS v9 respecto a la v8:
+//  - PISTA VISIBLE: con la pista, una flecha ámbar LATE sobre la figura
+//    grande, desde cómo está sentado el niño hasta la pose (se va sola
+//    cuando entra a la zona). Si lo que falta no se ve en esa vista (p. ej.
+//    encorvarse en el juego de frente), queda la flecha de la miniatura.
+//    Quique dice "¡Sigue la flecha!" o "¡Mira la pose de la esquina!".
+//    El evento 'pista' guarda dónde se mostró: dato 'figura' / 'esquina'.
+//  - Vibración opcional al aparecer la pista (apagada por defecto).
+//  - CELEBRACIÓN ANIMADA: al lograr una pose, la figura da dos saltitos y
+//    sale confeti; dura `segundosCelebracion` (ahora en el panel). En el
+//    cierre, más confeti y las poses en miniatura con su marca ✓ (las no
+//    logradas, tenues, sin cruz).
+//  - Todo se puede apagar en Parámetros → Pista y celebración (vuelve a
+//    lo de la v8).
 //
 // Flujo completo: flujo_nino_actividad_guiada_v1.svg. Sigue pendiente:
 // el botón "Escuchar" (requiere una dependencia de voz) y las
@@ -27,6 +28,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 import '../../modelos/datos_postura.dart';
 import '../../modelos/juego.dart';
@@ -39,6 +41,7 @@ import '../../servicios/servicio_participantes.dart';
 import '../../servicios/servicio_ble.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
+import '../../widgets/confeti.dart';
 import '../../widgets/figura_tu.dart';
 import '../../widgets/vinetas_pose.dart';
 
@@ -60,8 +63,7 @@ const double segundosPartidaQuieto = 2;
 const double toleranciaQuieto = 4;
 // Suavizado de la figura (más alto = sigue más rápido, menos suave).
 const double velocidadSuavizado = 8;
-// Duración de la celebración breve al completar una pose.
-const double segundosCelebracion = 1.5;
+// (La duración de la celebración de cada pose está en el panel.)
 // Cerca de la zona (Quique "un poco incómodo") en poses con zona de
 // límites: a menos de estas unidades del límite.
 const double distanciaCercaRango = 8;
@@ -69,6 +71,27 @@ const double distanciaCercaRango = 8;
 // solo lado (solo dibujo).
 const double dibujoZonaMin = -40;
 const double dibujoZonaMax = 85;
+
+// --- Pista visible (F8) ---
+// Segundos que dura un latido de la flecha (más bajo = late más rápido).
+const double periodoLatidoFlecha = 0.9;
+
+// --- Celebración animada (F8) ---
+// Saltitos de la figura al lograr una pose: cuántos, cuánto dura cada
+// uno y qué tan alto (en cabezas).
+const int saltosCelebracion = 2;
+const double segundosPorSalto = 0.45;
+const double alturaSalto = 0.35;
+// Papelitos de confeti al lograr una pose y en el cierre.
+const int confetiPose = 40;
+const int confetiCierre = 80;
+// Cuánto dura el confeti del cierre, y en cuántos segundos van saliendo
+// sus papelitos (escalonado: parece una lluvia más que un estallido).
+const double segundosConfetiCierre = 4;
+const double salidaConfetiCierre = 1.2;
+// Tamaño de las miniaturas de las poses en el cierre.
+const double anchoMiniaturaCierre = 62;
+const double altoMiniaturaCierre = 80;
 
 enum _Fase { partida, explicacion, pose, logrado, fin }
 
@@ -129,6 +152,10 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   double _tiempoSinAvance = 0;
   double _ultimaAyudaEn = 0;
   bool _pistaActiva = false;
+  // F8: lo que falta se ve en la vista de la figura (la flecha puede ir
+  // sobre la figura grande).
+  bool _faltaEnLaVista = false;
+  double _inicioFin = 0; // F8: para el confeti del cierre
   bool _yaEntro = false;
   bool _estabaDentro = false;
   bool _ayudaAbierta = false;
@@ -235,6 +262,24 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     return (_pose.adelante - m, _pose.adelante + m);
   }
 
+  /// F8: la flecha de la pista va sobre la figura grande.
+  bool get _flechaEnFigura => _p.pistaAnimada && _pistaActiva && _faltaEnLaVista;
+
+  /// F8: punto del latido de la flecha (0..1).
+  double get _latido => 0.5 + 0.5 * math.sin(2 * math.pi * _t / periodoLatidoFlecha);
+
+  /// F8: segundos desde que se logró la pose (para la celebración).
+  double get _tiempoCelebrando => _t - _inicioLogrado;
+
+  /// F8: cuánto sube la figura en los saltitos (en cabezas).
+  double get _salto {
+    if (!_p.celebracionAnimada || _fase != _Fase.logrado) return 0;
+    final e = _tiempoCelebrando;
+    if (e < 0 || e >= saltosCelebracion * segundosPorSalto) return 0;
+    final fraccion = (e % segundosPorSalto) / segundosPorSalto;
+    return alturaSalto * math.sin(math.pi * fraccion);
+  }
+
   // ------------------------------------------------------------
   // LÓGICA (se ejecuta en cada cuadro)
   // ------------------------------------------------------------
@@ -264,7 +309,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         case _Fase.pose:
           _revisarPose(dt, ahora);
         case _Fase.logrado:
-          if (ahora - _inicioLogrado >= segundosCelebracion) _despuesDeLaPose();
+          if (ahora - _inicioLogrado >= _p.segundosCelebracion) _despuesDeLaPose();
         case _Fase.explicacion:
         case _Fase.fin:
           break;
@@ -344,6 +389,10 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     final okLateral = errorLateral.abs() <= margenL;
     final okAdelante = _pose.adelanteDentro(errorAdelante);
 
+    // F8: ¿lo que falta se ve en esta vista? De costado se ve adelante/atrás;
+    // de frente, los lados.
+    _faltaEnLaVista = _costado ? !okAdelante : !okLateral;
+
     if (okLateral && okAdelante) _ultimoDentro = ahora;
     final dentro = ahora - _ultimoDentro <= graciaSalida;
 
@@ -401,7 +450,8 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       if (_tiempoSinAvance >= _p.segundosPista && !_pistaActiva) {
         _pistaActiva = true;
         metrica.pistasUsadas++;
-        _registro.evento('pista', pose: _indicePose);
+        _registro.evento('pista', pose: _indicePose, dato: _flechaEnFigura ? 'figura' : 'esquina');
+        if (_p.vibrarPista) HapticFeedback.mediumImpact();
       }
     }
 
@@ -459,6 +509,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
 
   void _terminar() {
     _fase = _Fase.fin;
+    _inicioFin = _t;
     _registro.evento('fin');
     _registro.completado = !_algunaSaltada &&
         _registro.poses.length == _poses.length &&
@@ -825,9 +876,27 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                 // De costado: zona en el eje adelante (puede ser de un solo lado).
                 zonaDesde: enPartida || !_costado ? null : _zonaDibujo.$1,
                 zonaHasta: enPartida || !_costado ? null : _zonaDibujo.$2,
+                // F8: la pista, sobre la figura grande: desde cómo está
+                // sentado hasta la pose, latiendo.
+                flechaDesde: _flechaEnFigura ? (_costado ? _adelante - _ceroAdelante : _lateral - _ceroLateral) : null,
+                flechaHasta: _flechaEnFigura ? _ejeDe(_pose) : null,
+                pulsoFlecha: _flechaEnFigura ? _latido : null,
+                salto: _salto,
               ),
             ),
           ),
+          // F8: confeti al lograr la pose.
+          if (_fase == _Fase.logrado && _p.celebracionAnimada)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Confeti(
+                  tiempo: _tiempoCelebrando,
+                  duracion: _p.segundosCelebracion,
+                  cantidad: confetiPose,
+                  semilla: _indicePose + 1,
+                ),
+              ),
+            ),
           // Miniatura de la pose: siempre a mano. Se destaca con la pista.
           if (!enPartida)
             Positioned(
@@ -861,11 +930,12 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                         vista: widget.juego.vista,
                         brazos: _pose.brazos,
                         // Con la pista: flecha desde la pose anterior hasta esta
-                        // (en el eje de la vista).
-                        flechaDesde: _pistaActiva
+                        // (en el eje de la vista), salvo que ya esté sobre la
+                        // figura grande (F8).
+                        flechaDesde: _pistaActiva && !_flechaEnFigura
                             ? (_indicePose == 0 ? 0 : _ejeDe(_poses[_indicePose - 1]))
                             : null,
-                        flechaHasta: _pistaActiva ? _ejeDe(_pose) : null,
+                        flechaHasta: _pistaActiva && !_flechaEnFigura ? _ejeDe(_pose) : null,
                       ),
                     ),
                     const Text('la pose',
@@ -978,7 +1048,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           frase = _pista.isEmpty ? '¡Ayúdame a llegar a la pose!' : _pista;
       }
       if (_pistaActiva && _comodidad != _Comodidad.comodo) {
-        frase = '$frase. ¡Mira la pose de la esquina!';
+        frase = _flechaEnFigura ? '$frase. ¡Sigue la flecha!' : '$frase. ¡Mira la pose de la esquina!';
       }
     }
     final colorBorde = fraseFija != null ? Colores.linea : (conectado ? _colorEstado : Colores.linea);
@@ -1042,15 +1112,20 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     final subtitulo = todoCompletado
         ? 'Terminaste «${widget.juego.nombre}».'
         : 'La próxima lo logramos juntos.';
-    return Column(
+    final animada = _p.celebracionAnimada;
+    final columna = Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const CircleAvatar(
-          radius: 60,
-          backgroundColor: Colores.quique,
-          child: Icon(Icons.celebration_rounded, size: 64, color: Colores.quiqueClaro),
-        ),
+        // F8: con la celebración animada, las poses del juego con su ✓.
+        if (animada)
+          _posesDelCierre()
+        else
+          const CircleAvatar(
+            radius: 60,
+            backgroundColor: Colores.quique,
+            child: Icon(Icons.celebration_rounded, size: 64, color: Colores.quiqueClaro),
+          ),
         const SizedBox(height: 24),
         Text(titulo, textAlign: TextAlign.center, style: Textos.titulo),
         const SizedBox(height: 6),
@@ -1094,6 +1169,89 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           child: const Text('Otra vez'),
         ),
       ],
+    );
+    if (!animada) return columna;
+    return Stack(
+      children: [
+        columna,
+        // Confeti que cae desde arriba (no tapa los botones al tocarlos).
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Confeti(
+              tiempo: _t - _inicioFin,
+              duracion: segundosConfetiCierre,
+              cantidad: confetiCierre,
+              origen: const Offset(0.5, 0.3),
+              semilla: 99,
+              salidaEscalonada: salidaConfetiCierre,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// F8: las poses del juego en miniatura. Las logradas, en verde y con
+  /// ✓; las demás, tenues (sin cruz: se celebra el esfuerzo).
+  Widget _posesDelCierre() {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        for (var i = 0; i < _poses.length; i++)
+          _miniaturaCierre(
+            _poses[i],
+            _registro.poses.any((m) => m.indice == i && m.completada),
+          ),
+      ],
+    );
+  }
+
+  Widget _miniaturaCierre(Pose pose, bool lograda) {
+    return Opacity(
+      opacity: lograda ? 1 : 0.4,
+      child: SizedBox(
+        width: anchoMiniaturaCierre,
+        height: altoMiniaturaCierre,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colores.tarjeta,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: lograda ? Colores.comodo : Colores.linea, width: 2),
+                ),
+                child: FiguraTu(
+                  adelante: pose.adelante,
+                  lateral: pose.lateral,
+                  siluetaAdelante: 0,
+                  siluetaLateral: 0,
+                  color: lograda ? Colores.comodo : Colores.incomodo,
+                  mostrarSilueta: false,
+                  mostrarSensores: false,
+                  mostrarSilla: false,
+                  vista: widget.juego.vista,
+                  brazos: pose.brazos,
+                ),
+              ),
+            ),
+            if (lograda)
+              const Positioned(
+                right: -6,
+                top: -6,
+                child: CircleAvatar(
+                  radius: 12,
+                  backgroundColor: Colores.comodo,
+                  child: Icon(Icons.check_rounded, size: 16, color: Colores.tarjeta),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

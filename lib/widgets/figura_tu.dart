@@ -2,13 +2,14 @@
 // figura_tu.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v7 — paso F6.2
+// Versión: v8 — paso F8
 //
-// CAMBIOS v7 respecto a la v6:
-//  - La SILLA se dibuja solo en la vista de COSTADO: de frente se veía
-//    como una línea gris detrás de las piernas que no se entendía.
-//  - Los tipos VistaFigura y ModoBrazos pasaron a modelos/pose.dart (las
-//    poses los necesitan); este archivo los usa desde ahí.
+// CAMBIOS v8 respecto a la v7:
+//  - `pulsoFlecha` (0..1, o null = sin latido): la flecha ámbar late
+//    (más gruesa y opaca en 1, más delgada y transparente en 0). La
+//    pantalla del juego lo hace oscilar con la pista.
+//  - `salto` (en cabezas): sube la figura «Tú» (no la silueta ni la zona)
+//    para el saltito de la celebración.
 //
 // Qué dibuja: un niño SENTADO, de frente o de costado (con silla).
 //  - Espalda como curva continua; proporciones medidas en "cabezas" (h).
@@ -77,6 +78,10 @@ const double opacidadZona = 0.45;
 const double opacidadFantasma = 0.22;
 const double grosorFlecha = 0.13; // en cabezas
 const double barridoMinimoFlecha = 0.5; // radianes: la flecha nunca es tan corta que no se vea
+// Cuánto se engrosa la flecha en el punto alto del latido (0,6 = 60 % más).
+const double aumentoPulsoFlecha = 0.6;
+// Opacidad de la flecha en el punto bajo del latido (en el alto es 1).
+const double opacidadMinPulsoFlecha = 0.55;
 
 /// Convierte las "unidades" del sensor (escala 0–180) a grados
 /// aproximados: unidades ≈ 90 × seno(ángulo).
@@ -106,6 +111,9 @@ class FiguraTu extends StatelessWidget {
   final ModoBrazos brazos; // de la figura «Tú»
   final ModoBrazos brazosSilueta; // de la silueta (la pose)
   final bool mostrarSilla;
+  // Nuevos en v8:
+  final double? pulsoFlecha; // null = flecha fija; 0..1 = punto del latido
+  final double salto; // cabezas que sube la figura «Tú» (celebración)
 
   const FiguraTu({
     super.key,
@@ -127,6 +135,8 @@ class FiguraTu extends StatelessWidget {
     this.brazos = ModoBrazos.apoyados,
     this.brazosSilueta = ModoBrazos.apoyados,
     this.mostrarSilla = true,
+    this.pulsoFlecha,
+    this.salto = 0,
   });
 
   @override
@@ -239,7 +249,11 @@ class _PintorFigura extends CustomPainter {
       _dibujarCuerpo(canvas, size, fantasma, f.color.withValues(alpha: opacidadFantasma), 1.0, false,
           ModoBrazos.apoyados);
     }
+    // «Tú», con el saltito de la celebración si lo hay.
+    canvas.save();
+    if (f.salto != 0) canvas.translate(0, -f.salto * _h(size));
     _dibujarCuerpo(canvas, size, ejeTu, f.color, 1.0, f.mostrarSensores, f.brazos);
+    canvas.restore();
     final fd = f.flechaDesde, fh = f.flechaHasta;
     if (fd != null && fh != null) _dibujarFlecha(canvas, size, fd, fh);
     if (f.marcasQuieto) _dibujarMarcasQuieto(canvas, size, ejeTu);
@@ -452,11 +466,17 @@ class _PintorFigura extends CustomPainter {
     final h = _h(size);
     final cad = _cadera(size);
     final radio = (_cuerpo(size, 0).cabeza - cad).distance + h * 1.3;
+    // Latido: más gruesa y opaca en el punto alto.
+    final pulso = f.pulsoFlecha?.clamp(0.0, 1.0).toDouble();
+    final escala = pulso == null ? 1.0 : 1 + aumentoPulsoFlecha * pulso;
+    final colorFlecha = pulso == null
+        ? Colores.ambar
+        : Colores.ambar.withValues(alpha: opacidadMinPulsoFlecha + (1 - opacidadMinPulsoFlecha) * pulso);
     final pincel = Paint()
-      ..color = Colores.ambar
+      ..color = colorFlecha
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = grosorFlecha * h;
+      ..strokeWidth = grosorFlecha * h * escala;
     final sentido = (b - a).sign;
     final finArco = b - sentido * 0.08;
     canvas.drawPath(
@@ -466,7 +486,7 @@ class _PintorFigura extends CustomPainter {
     final punta = cad + Offset(math.sin(b), -math.cos(b)) * radio;
     final tangente = Offset(math.cos(b), math.sin(b)) * sentido;
     final normal = Offset(-tangente.dy, tangente.dx);
-    final largo = h * 0.45;
+    final largo = h * 0.45 * escala;
     final base = punta - tangente * largo;
     canvas.drawPath(
       Path()
@@ -474,7 +494,7 @@ class _PintorFigura extends CustomPainter {
         ..lineTo((base + normal * (largo * 0.6)).dx, (base + normal * (largo * 0.6)).dy)
         ..lineTo((base - normal * (largo * 0.6)).dx, (base - normal * (largo * 0.6)).dy)
         ..close(),
-      Paint()..color = Colores.ambar,
+      Paint()..color = colorFlecha,
     );
   }
 
@@ -518,6 +538,8 @@ class _PintorFigura extends CustomPainter {
         a.vista != b.vista ||
         a.brazos != b.brazos ||
         a.brazosSilueta != b.brazosSilueta ||
-        a.mostrarSilla != b.mostrarSilla;
+        a.mostrarSilla != b.mostrarSilla ||
+        a.pulsoFlecha != b.pulsoFlecha ||
+        a.salto != b.salto;
   }
 }

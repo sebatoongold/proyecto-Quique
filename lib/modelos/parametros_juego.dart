@@ -2,20 +2,18 @@
 // parametros_juego.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v7 — paso F6.2
+// Versión: v8 — paso F8
 //
-// CAMBIOS v7 respecto a la v6:
-//  - Parámetros del JUEGO FRONTAL ("De lo alto a lo bajo", vista de
-//    costado). Ver posesDeLoAltoALoBajoCon() en pose.dart:
-//      altoHasta       el "alto" cuenta si adelante ≤ esto (todo lo
-//                      erguido o más)
-//      anguloMedio     cuánto curvarse en el "medio camino"
-//      margenMedio     ± alrededor de anguloMedio (zona angosta)
-//      bolitaDesde     la "bolita" cuenta si adelante ≥ esto
-//      segundosBolita  cuánto mantener la bolita (menos que las demás)
-//      ceroFrontal     de dónde se mide: 'fijo' (el cero del sensor, igual
-//                      para todos), 'calibrado' (la calibración del
-//                      participante) o 'automatico' (2 s quieto al empezar)
+// CAMBIOS v8 respecto a la v7:
+//  - Parámetros de PISTA Y CELEBRACIÓN (para alternar variantes entre
+//    participantes y comparar):
+//      pistaAnimada         la pista se muestra con una flecha que late
+//                           sobre la figura grande (no = solo la miniatura)
+//      vibrarPista          el teléfono vibra una vez cuando aparece la
+//                           pista (apagado por defecto)
+//      celebracionAnimada   saltito de la figura + confeti, y cierre con
+//                           las poses (no = la celebración sencilla de antes)
+//      segundosCelebracion  cuánto dura la celebración de cada pose
 //
 // Los parámetros del juego que se pueden cambiar DESDE LA APP
 // (Configuración → Parámetros del juego), sin recompilar. Sirven para
@@ -70,6 +68,11 @@ const double defectoBolitaDesde = 30;
 const double defectoSegundosBolita = 5;
 const String defectoCeroFrontal = 'fijo'; // 'fijo' | 'calibrado' | 'automatico'
 const List<String> opcionesCeroFrontal = ['fijo', 'calibrado', 'automatico'];
+// Pista y celebración (ver arriba).
+const bool defectoPistaAnimada = true;
+const bool defectoVibrarPista = false;
+const bool defectoCelebracionAnimada = true;
+const double defectoSegundosCelebracion = 2.5;
 
 // ---------- RANGOS DE LOS DESLIZADORES DEL PANEL ----------
 // (mínimo, máximo, paso). Cambiarlos aquí cambia el panel.
@@ -89,6 +92,7 @@ const rangoAnguloMedio = (min: 6.0, max: 30.0, paso: 1.0);
 const rangoMargenMedio = (min: 2.0, max: 12.0, paso: 1.0);
 const rangoBolitaDesde = (min: 15.0, max: 60.0, paso: 1.0);
 const rangoSegundosBolita = (min: 2.0, max: 15.0, paso: 1.0);
+const rangoSegundosCelebracion = (min: 1.0, max: 5.0, paso: 0.5);
 
 class ParametrosJuego {
   final double anguloLateral;
@@ -112,6 +116,10 @@ class ParametrosJuego {
   final double bolitaDesde;
   final double segundosBolita;
   final String ceroFrontal;
+  final bool pistaAnimada;
+  final bool vibrarPista;
+  final bool celebracionAnimada;
+  final double segundosCelebracion;
 
   const ParametrosJuego({
     this.anguloLateral = defectoAnguloLateral,
@@ -135,6 +143,10 @@ class ParametrosJuego {
     this.bolitaDesde = defectoBolitaDesde,
     this.segundosBolita = defectoSegundosBolita,
     this.ceroFrontal = defectoCeroFrontal,
+    this.pistaAnimada = defectoPistaAnimada,
+    this.vibrarPista = defectoVibrarPista,
+    this.celebracionAnimada = defectoCelebracionAnimada,
+    this.segundosCelebracion = defectoSegundosCelebracion,
   });
 
   /// true si todo está en los valores por defecto.
@@ -162,6 +174,10 @@ class ParametrosJuego {
     double? bolitaDesde,
     double? segundosBolita,
     String? ceroFrontal,
+    bool? pistaAnimada,
+    bool? vibrarPista,
+    bool? celebracionAnimada,
+    double? segundosCelebracion,
   }) =>
       ParametrosJuego(
         anguloLateral: anguloLateral ?? this.anguloLateral,
@@ -185,6 +201,10 @@ class ParametrosJuego {
         bolitaDesde: bolitaDesde ?? this.bolitaDesde,
         segundosBolita: segundosBolita ?? this.segundosBolita,
         ceroFrontal: ceroFrontal ?? this.ceroFrontal,
+        pistaAnimada: pistaAnimada ?? this.pistaAnimada,
+        vibrarPista: vibrarPista ?? this.vibrarPista,
+        celebracionAnimada: celebracionAnimada ?? this.celebracionAnimada,
+        segundosCelebracion: segundosCelebracion ?? this.segundosCelebracion,
       );
 
   Map<String, dynamic> toJson() => {
@@ -209,6 +229,10 @@ class ParametrosJuego {
         'bolitaDesde': bolitaDesde,
         'segundosBolita': segundosBolita,
         'ceroFrontal': ceroFrontal,
+        'pistaAnimada': pistaAnimada,
+        'vibrarPista': vibrarPista,
+        'celebracionAnimada': celebracionAnimada,
+        'segundosCelebracion': segundosCelebracion,
       };
 
   /// Lee lo guardado; lo que falte o esté mal queda en su valor por defecto.
@@ -237,6 +261,10 @@ class ParametrosJuego {
       bolitaDesde: n('bolitaDesde', defectoBolitaDesde),
       segundosBolita: n('segundosBolita', defectoSegundosBolita),
       ceroFrontal: opcionesCeroFrontal.contains(j['ceroFrontal']) ? j['ceroFrontal'] as String : defectoCeroFrontal,
+      pistaAnimada: b('pistaAnimada', defectoPistaAnimada),
+      vibrarPista: b('vibrarPista', defectoVibrarPista),
+      celebracionAnimada: b('celebracionAnimada', defectoCelebracionAnimada),
+      segundosCelebracion: n('segundosCelebracion', defectoSegundosCelebracion),
     );
   }
 }
