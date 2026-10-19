@@ -1,12 +1,14 @@
 // ============================================================
 // parametros_screen.dart
-// Fecha: 18-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso F3
+// Versión: v5 — paso F7.3
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Nueva sección "Postura cero": elegir si el juego parte desde la
-//    calibración del participante o toma el cero solo (automático).
+// CAMBIOS v5 respecto a la v4:
+//  - Se quita "El apoderado ve el criterio calibrado": el apoderado ve
+//    ahora lo que registró el cinturón, así que lo decide "El cinturón
+//    registra con la calibración". La sección pasa a llamarse
+//    "Cinturón".
 //
 // Herramienta del INVESTIGADOR (Configuración → Parámetros del juego):
 // cambia cómo se comporta el juego sin recompilar, para probar
@@ -174,6 +176,17 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
                 rango: rangoAmplificacion,
                 texto: '× ${_p.amplificacion.toStringAsFixed(1).replaceAll('.', ',')}',
                 alCambiar: (v, g) => _cambiar(_p.copyWith(amplificacion: v), guardar: g),
+              ),
+
+              _seccion('Cinturón'),
+              _interruptor(
+                titulo: 'El cinturón registra con la calibración',
+                ayuda: _p.cinturonCalibrado
+                    ? 'Sí: al elegir un participante calibrado, se le envía su postura neutral al '
+                        'cinturón, que registra sus episodios desde ahí. Es lo que ve el apoderado.'
+                    : 'No: el cinturón registra siempre con el umbral fijo. Es lo que ve el apoderado.',
+                valor: _p.cinturonCalibrado,
+                alCambiar: (v) => _cambiar(_p.copyWith(cinturonCalibrado: v), guardar: true),
               ),
 
               _seccion('Investigador'),

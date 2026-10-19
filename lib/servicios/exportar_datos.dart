@@ -2,12 +2,13 @@
 // exportar_datos.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v4 — paso F3
+// Versión: v6 — paso F7.2
 //
-// CAMBIOS v4 respecto a la v3:
-//  - El perfil exportado incluye su 'calibracion' (postura neutral,
-//    frase usada, variación y fracción marcada como mala postura), y
-//    cada juego su 'tipoCero'. Formato 'quique-testeo-v4'.
+// CAMBIOS v6 respecto a la v5:
+//  - Se exportan los EPISODIOS DEL CINTURÓN (su cola) de cada
+//    participante ('episodiosCinturon'), y los resúmenes del monitoreo
+//    incluyen los recuperados del cinturón y la validación
+//    ('validacionCinturon'). Formato 'quique-testeo-v6'.
 //
 // Arma un texto JSON con los datos de un participante (o de todos) y
 // lo copia al PORTAPAPELES. Desde ahí se pega donde convenga: un correo
@@ -25,15 +26,21 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+import '../modelos/episodio_cinturon.dart';
 import '../modelos/participante.dart';
+import '../modelos/registro_juego.dart';
+import '../modelos/sesion_monitoreo.dart';
 import 'almacenamiento_juegos.dart';
+import 'analisis_monitoreo.dart';
+import 'servicio_cinturon.dart';
+import 'servicio_monitoreo.dart';
 import 'servicio_participantes.dart';
 
 // ---------- PARÁMETROS AJUSTABLES ----------
 // Identifica la versión del formato exportado. Si en un paso futuro se
 // agregan datos (eventos, recorrido…), se sube el número para saber
 // qué contiene cada exportación.
-const String formatoExportacion = 'quique-testeo-v4';
+const String formatoExportacion = 'quique-testeo-v6';
 
 class ExportarDatos {
   ExportarDatos._();
@@ -46,6 +53,44 @@ class ExportarDatos {
         'calibracion': p.calibracion?.toJson(),
       };
 
+  /// Sesiones de monitoreo de un participante, con los dos resúmenes.
+  static List<Map<String, dynamic>> _sesiones(
+    String? codigo,
+    List<RegistroJuego> juegos, {
+    required bool conLecturas,
+  }) {
+    final delCinturon = ServicioCinturon.instancia.episodios.value;
+    return [
+      for (final s in ServicioMonitoreo.instancia.de(codigo))
+        {
+          ...s.toJson(conLecturas: false),
+          'resumenFijo': AnalisisMonitoreo.calcular(s, Criterio.fijo,
+                  juegos: juegos, episodiosCinturon: delCinturon)
+              ?.toJson(),
+          'resumenCalibrado': AnalisisMonitoreo.calcular(s, Criterio.calibrado,
+                  juegos: juegos, episodiosCinturon: delCinturon)
+              ?.toJson(),
+          'validacionCinturon': _validacion(s, juegos, delCinturon),
+          if (conLecturas)
+            'lecturasCompactas': jsonEncode({'t': s.t, 'x': s.x, 'y': s.y, 'm': s.m}),
+        },
+    ];
+  }
+
+  static Map<String, dynamic>? _validacion(
+    SesionMonitoreo s,
+    List<RegistroJuego> juegos,
+    List<EpisodioCinturon> delCinturon,
+  ) {
+    final v = AnalisisMonitoreo.comparar(s, juegos: juegos, episodiosCinturon: delCinturon);
+    if (v == null) return null;
+    return {'criterio': v.criterio.name, 'cinturon': v.cinturon, 'app': v.app};
+  }
+
+  /// Episodios del cinturón de un participante.
+  static List<Map<String, dynamic>> _episodiosCinturon(String? codigo) =>
+      ServicioCinturon.instancia.de(codigo).map((e) => e.toJson()).toList();
+
   /// Datos de UN participante, como texto JSON legible.
   static Future<String> textoDe(Participante p, {bool incluirNombre = false}) async {
     final juegos = await AlmacenamientoJuegos.cargarDe(p.codigo);
@@ -54,6 +99,8 @@ class ExportarDatos {
       'exportado': DateTime.now().toIso8601String(),
       'participante': _perfil(p, incluirNombre),
       'juegos': juegos.map((r) => r.toJson()).toList(),
+      'monitoreo': _sesiones(p.codigo, juegos, conLecturas: true),
+      'episodiosCinturon': _episodiosCinturon(p.codigo),
     };
     return const JsonEncoder.withIndent('  ').convert(datos);
   }
@@ -67,6 +114,8 @@ class ExportarDatos {
       lista.add({
         ..._perfil(p, incluirNombre),
         'juegos': juegos.map((r) => r.toJson()).toList(),
+        'monitoreo': _sesiones(p.codigo, juegos, conLecturas: false),
+        'episodiosCinturon': _episodiosCinturon(p.codigo),
       });
     }
     final sinParticipante = await AlmacenamientoJuegos.cargarDe(null);

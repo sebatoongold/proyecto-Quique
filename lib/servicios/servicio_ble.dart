@@ -1,8 +1,18 @@
 // ============================================================
 // servicio_ble.dart
-// Fecha: 11-10-2026
+// Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso C2 (Bluetooth separado de las pantallas)
+// Versión: v2 — paso F7.2
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Al conectarse busca también la característica del REGISTRO (la
+//    cola de episodios del firmware) y ofrece dos operaciones:
+//      leerRegistro()          -> lee una tanda (texto JSON)
+//      escribirComando(texto)  -> ACK:<id>, BORRAR_TODO, CAL:…, RESET, UMBRAL:…
+//    Las usa servicio_cinturon.dart. Si el firmware es antiguo y no la
+//    tiene, todo lo demás funciona igual (las dos devuelven fallo).
+//  - Nuevo contador `conexiones`: sube en 1 cada vez que se conecta,
+//    para que otros servicios sepan cuándo sincronizar.
 //
 // QUÉ HACE: busca el wearable, se conecta, escucha los datos en vivo y
 // los deja disponibles para CUALQUIER pantalla. Antes todo esto vivía
@@ -39,6 +49,7 @@ import '../modelos/datos_postura.dart';
 // --- Deben ser IDÉNTICOS a los del firmware (.ino) ---
 const String uuidServicio = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
 const String uuidDatosEnVivo = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+const String uuidRegistro = 'a1b2c3d4-0002-4e5f-8a9b-1234567890ab'; // cola de episodios + comandos
 const String nombreWearable = 'ESP32_Sensor_Postura';
 
 // ---------- PARÁMETROS AJUSTABLES ----------
@@ -62,6 +73,40 @@ class ServicioBle {
 
   /// Texto del último error, para mostrarlo o depurar.
   String? ultimoError;
+
+  /// Sube en 1 cada vez que se logra una conexión (para sincronizar).
+  final ValueNotifier<int> conexiones = ValueNotifier(0);
+
+  BluetoothCharacteristic? _registro; // null = no conectado o firmware sin cola
+
+  /// true si el cinturón conectado tiene la cola de episodios.
+  bool get tieneRegistro => conectado && _registro != null;
+
+  /// Lee una tanda del registro (texto JSON). null si no se pudo.
+  Future<String?> leerRegistro() async {
+    final c = _registro;
+    if (!conectado || c == null) return null;
+    try {
+      final bytes = await c.read();
+      return utf8.decode(bytes, allowMalformed: true);
+    } catch (e) {
+      debugPrint('ServicioBle.leerRegistro: $e');
+      return null;
+    }
+  }
+
+  /// Escribe un comando en el registro. true si el cinturón lo recibió.
+  Future<bool> escribirComando(String comando) async {
+    final c = _registro;
+    if (!conectado || c == null) return false;
+    try {
+      await c.write(utf8.encode(comando), withoutResponse: false);
+      return true;
+    } catch (e) {
+      debugPrint('ServicioBle.escribirComando($comando): $e');
+      return false;
+    }
+  }
 
   BluetoothDevice? _dispositivo;
   StreamSubscription<List<ScanResult>>? _subBusqueda;
@@ -121,6 +166,7 @@ class ServicioBle {
     _subConexion = null;
     await _dispositivo?.disconnect();
     _dispositivo = null;
+    _registro = null;
     datos.value = null;
     estado.value = EstadoConexion.desconectado;
   }
@@ -185,14 +231,16 @@ class ServicioBle {
       // entrega el UUID en mayúsculas.
       final servicios = await dispositivo.discoverServices();
       BluetoothCharacteristic? caracteristica;
+      BluetoothCharacteristic? registro;
       for (final servicio in servicios) {
         if (servicio.uuid.toString().toLowerCase() != uuidServicio) continue;
         for (final c in servicio.characteristics) {
-          if (c.uuid.toString().toLowerCase() == uuidDatosEnVivo) {
-            caracteristica = c;
-          }
+          final id = c.uuid.toString().toLowerCase();
+          if (id == uuidDatosEnVivo) caracteristica = c;
+          if (id == uuidRegistro) registro = c;
         }
       }
+      _registro = registro; // puede ser null con un firmware antiguo
       if (caracteristica == null) {
         throw Exception('El wearable no tiene la característica de datos en vivo');
       }
@@ -208,6 +256,7 @@ class ServicioBle {
 
       ultimoError = null;
       estado.value = EstadoConexion.conectado;
+      conexiones.value++;
 
       // Si el wearable se apaga o se aleja, se detecta aquí y se
       // vuelve a buscar automáticamente.
@@ -231,6 +280,7 @@ class ServicioBle {
   }
 
   void _alDesconectarse() {
+    _registro = null;
     _subDatos?.cancel();
     _subDatos = null;
     datos.value = null;

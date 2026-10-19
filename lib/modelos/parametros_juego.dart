@@ -1,14 +1,13 @@
 // ============================================================
 // parametros_juego.dart
-// Fecha: 18-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso F3
+// Versión: v5 — paso F7.3
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Nuevo parámetro `ceroCalibrado`: el juego usa como "cero" la
-//    postura neutral calibrada del participante (Configuración →
-//    Calibrar postura) en vez de tomarla sola al empezar. Por defecto,
-//    no (automático, como antes).
+// CAMBIOS v5 respecto a la v4:
+//  - Se quita `apoderadoVeCalibrado`: el apoderado ve lo que registró
+//    el cinturón, así que el criterio lo decide `cinturonCalibrado`.
+//    (Si quedó guardado de antes, simplemente se ignora.)
 //
 // Los parámetros del juego que se pueden cambiar DESDE LA APP
 // (Configuración → Parámetros del juego), sin recompilar. Sirven para
@@ -49,6 +48,8 @@ const bool defectoMostrarNumeros = true;
 // Cero del juego: false = automático (2 s quieto al empezar cada juego);
 // true = la calibración del participante (si no tiene, usa el automático).
 const bool defectoCeroCalibrado = false;
+// El cinturón registra con la calibración del participante (ver arriba).
+const bool defectoCinturonCalibrado = true;
 
 // ---------- RANGOS DE LOS DESLIZADORES DEL PANEL ----------
 // (mínimo, máximo, paso). Cambiarlos aquí cambia el panel.
@@ -73,6 +74,7 @@ class ParametrosJuego {
   final double amplificacion;
   final bool mostrarNumeros;
   final bool ceroCalibrado;
+  final bool cinturonCalibrado;
 
   const ParametrosJuego({
     this.anguloLateral = defectoAnguloLateral,
@@ -86,6 +88,7 @@ class ParametrosJuego {
     this.amplificacion = defectoAmplificacion,
     this.mostrarNumeros = defectoMostrarNumeros,
     this.ceroCalibrado = defectoCeroCalibrado,
+    this.cinturonCalibrado = defectoCinturonCalibrado,
   });
 
   /// true si todo está en los valores por defecto.
@@ -103,6 +106,7 @@ class ParametrosJuego {
     double? amplificacion,
     bool? mostrarNumeros,
     bool? ceroCalibrado,
+    bool? cinturonCalibrado,
   }) =>
       ParametrosJuego(
         anguloLateral: anguloLateral ?? this.anguloLateral,
@@ -116,6 +120,7 @@ class ParametrosJuego {
         amplificacion: amplificacion ?? this.amplificacion,
         mostrarNumeros: mostrarNumeros ?? this.mostrarNumeros,
         ceroCalibrado: ceroCalibrado ?? this.ceroCalibrado,
+        cinturonCalibrado: cinturonCalibrado ?? this.cinturonCalibrado,
       );
 
   Map<String, dynamic> toJson() => {
@@ -130,6 +135,7 @@ class ParametrosJuego {
         'amplificacion': amplificacion,
         'mostrarNumeros': mostrarNumeros,
         'ceroCalibrado': ceroCalibrado,
+        'cinturonCalibrado': cinturonCalibrado,
       };
 
   /// Lee lo guardado; lo que falte o esté mal queda en su valor por defecto.
@@ -148,6 +154,7 @@ class ParametrosJuego {
       amplificacion: n('amplificacion', defectoAmplificacion),
       mostrarNumeros: b('mostrarNumeros', defectoMostrarNumeros),
       ceroCalibrado: b('ceroCalibrado', defectoCeroCalibrado),
+      cinturonCalibrado: b('cinturonCalibrado', defectoCinturonCalibrado),
     );
   }
 }

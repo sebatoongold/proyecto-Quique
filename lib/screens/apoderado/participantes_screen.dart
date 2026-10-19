@@ -2,11 +2,11 @@
 // participantes_screen.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v3 — paso F3
+// Versión: v5 — paso F7.2
 //
-// CAMBIOS v3 respecto a la v2:
-//  - El menú ⋮ de cada participante tiene "Calibrar postura".
-//  - La lista muestra si cada participante está calibrado.
+// CAMBIOS v5 respecto a la v4:
+//  - Eliminar un participante borra también los episodios del cinturón
+//    que tenía atribuidos.
 //
 // Herramienta del INVESTIGADOR (se abre desde Configuración):
 //  - Crear un participante (código P01, P02…, nombre opcional, grupo
@@ -25,6 +25,8 @@ import 'package:flutter/material.dart';
 import '../../modelos/participante.dart';
 import '../../servicios/almacenamiento_juegos.dart';
 import '../../servicios/exportar_datos.dart';
+import '../../servicios/servicio_cinturon.dart';
+import '../../servicios/servicio_monitoreo.dart';
 import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
@@ -95,7 +97,8 @@ class _ParticipantesScreenState extends State<ParticipantesScreen> {
       builder: (context) => AlertDialog(
         title: Text('¿Eliminar a ${p.codigo}?'),
         content: Text(
-          'Se borrarán su perfil y sus $n juegos. Esto no se puede deshacer. '
+          'Se borrarán su perfil, sus $n juegos y sus sesiones de monitoreo. '
+          'Esto no se puede deshacer. '
           'Si los necesitas, copia sus datos antes.',
         ),
         actions: [
@@ -106,6 +109,8 @@ class _ParticipantesScreenState extends State<ParticipantesScreen> {
     );
     if (confirmar != true) return;
     await AlmacenamientoJuegos.borrarDe(p.codigo);
+    await ServicioMonitoreo.instancia.borrarDe(p.codigo);
+    await ServicioCinturon.instancia.borrarDe(p.codigo);
     await _servicio.eliminar(p);
     await _contarJuegos();
     _aviso('${p.codigo} eliminado');

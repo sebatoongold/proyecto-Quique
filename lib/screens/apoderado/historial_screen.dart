@@ -1,18 +1,22 @@
 // ============================================================
 // historial_screen.dart
-// Fecha: 13-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso F1
+// Versión: v3 — paso F7.3
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Usa solo los juegos del PARTICIPANTE ACTIVO, para que el
-//    historial de un niño no se mezcle con el de otro.
+// CAMBIOS v3 respecto a la v2:
+//  - La pestaña POSTURA ya no es un espacio reservado: muestra la línea
+//    de tiempo del día con los episodios que registró el cinturón
+//    (widgets/linea_tiempo_postura.dart).
+//  - Abre en Postura (o en la pestaña que se pida con `inicial`).
+//  - La pantalla ya no es una sola lista: Postura ocupa el alto
+//    completo (panel fijo, horas con foco y semana fija); Juegos se
+//    desplaza como antes.
 //
 // Dos pestañas que responden dos preguntas distintas, sobre la misma
 // línea de tiempo:
-//  - POSTURA (monitoreo pasivo): ¿está cambiando su postura en el día a
-//    día? -> todavía vacía: depende del historial de episodios y del
-//    registro de sesiones del cinturón.
+//  - POSTURA (monitoreo pasivo): ¿cómo fue su postura en el día?
+//    -> línea de tiempo con los episodios del cinturón.
 //  - JUEGOS: ¿está aprendiendo a reconocer y controlar su postura?
 //    -> tiempo para lograr una pose, comparado con su primer día.
 //
@@ -28,19 +32,21 @@ import '../../servicios/almacenamiento_juegos.dart';
 import '../../servicios/analisis_juegos.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
+import '../../widgets/linea_tiempo_postura.dart';
 
-enum _Seccion { postura, juegos }
+enum SeccionHistorial { postura, juegos }
 
 class HistorialScreen extends StatefulWidget {
-  const HistorialScreen({super.key});
+  final SeccionHistorial inicial;
+
+  const HistorialScreen({super.key, this.inicial = SeccionHistorial.postura});
 
   @override
   State<HistorialScreen> createState() => _HistorialScreenState();
 }
 
 class _HistorialScreenState extends State<HistorialScreen> {
-  // Abre en Juegos porque, por ahora, es la única pestaña con datos.
-  _Seccion _seccion = _Seccion.juegos;
+  late SeccionHistorial _seccion = widget.inicial;
   late final Future<List<RegistroJuego>> _registros = AlmacenamientoJuegos.cargarDelActivo();
 
   @override
@@ -50,19 +56,21 @@ class _HistorialScreenState extends State<HistorialScreen> {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            children: [
-              SegmentedButton<_Seccion>(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+              SegmentedButton<SeccionHistorial>(
                 showSelectedIcon: false,
                 segments: const [
                   ButtonSegment(
-                    value: _Seccion.postura,
+                    value: SeccionHistorial.postura,
                     label: Text('Postura'),
                     icon: Icon(Icons.accessibility_new_rounded),
                   ),
                   ButtonSegment(
-                    value: _Seccion.juegos,
+                    value: SeccionHistorial.juegos,
                     label: Text('Juegos'),
                     icon: Icon(Icons.videogame_asset_rounded),
                   ),
@@ -70,31 +78,16 @@ class _HistorialScreenState extends State<HistorialScreen> {
                 selected: {_seccion},
                 onSelectionChanged: (s) => setState(() => _seccion = s.first),
               ),
-              const SizedBox(height: 20),
-              if (_seccion == _Seccion.postura) _postura() else _juegos(),
+              const SizedBox(height: 14),
+              Expanded(
+                child: _seccion == SeccionHistorial.postura
+                    ? const LineaTiempoPostura()
+                    : ListView(children: [_juegos()]),
+              ),
             ],
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  // ---------------- POSTURA (reservado) ----------------
-  Widget _postura() {
-    return _tarjeta(
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.accessibility_new_rounded, color: Colores.neutro, size: 36),
-          SizedBox(height: 12),
-          Text('Su postura en el día a día', style: Textos.tituloTarjeta),
-          SizedBox(height: 8),
-          Text(
-            'Aquí verás cómo cambia su postura cuando usa el cinturón, fuera de '
-            'los juegos. Se activará cuando el cinturón guarde sus sesiones de uso.',
-            style: Textos.secundario,
-          ),
-        ],
       ),
     );
   }

@@ -2,11 +2,13 @@
 // inicio_apoderado.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v5 — paso F1b
+// Versión: v6 — paso F5
 //
-// CAMBIOS v5 respecto a la v4:
-//  - La línea del participante activo muestra su edad exacta (antes,
-//    el grupo de edad).
+// CAMBIOS v6 respecto a la v5:
+//  - La tarjeta "Resumen de hoy" ya no es provisoria: es la tarjeta
+//    real del monitoreo (widgets/tarjeta_resumen_hoy.dart), con el
+//    botón para iniciar y terminar el monitoreo. Era el pendiente del
+//    antiguo paso C5.
 //
 // Esqueleto del dashboard del apoderado: encabezado, participante,
 // estado de conexión real, actividad sugerida e Historial.
@@ -19,6 +21,7 @@ import '../../servicios/servicio_ble.dart';
 import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
+import '../../widgets/tarjeta_resumen_hoy.dart';
 import 'configuracion_screen.dart';
 import 'historial_screen.dart';
 import 'participantes_screen.dart';
@@ -91,19 +94,8 @@ class InicioApoderado extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 20),
-                _tarjeta(
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Resumen de hoy', style: Textos.tituloTarjeta),
-                      SizedBox(height: 8),
-                      Text(
-                        'Aquí irá el resumen del día (paso C5).',
-                        style: Textos.secundario,
-                      ),
-                    ],
-                  ),
-                ),
+                // Resumen de hoy: monitoreo real del participante activo.
+                const TarjetaResumenHoy(),
                 const SizedBox(height: 14),
                 // Actividad sugerida: el único bloque en verde bosque.
                 Container(
@@ -192,17 +184,6 @@ class InicioApoderado extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  static Widget _tarjeta({required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colores.tarjeta,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: child,
     );
   }
 

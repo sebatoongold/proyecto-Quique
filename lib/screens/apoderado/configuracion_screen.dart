@@ -1,13 +1,12 @@
 // ============================================================
 // configuracion_screen.dart
-// Fecha: 18-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v5 — paso F3
+// Versión: v8 — paso F7.3
 //
-// CAMBIOS v5 respecto a la v4:
-//  - Nueva opción "Calibrar postura" del participante activo (muestra
-//    si ya está calibrado y con qué frase).
-//  - El resumen de la variante dice si el juego usa el cero calibrado.
+// CAMBIOS v8 respecto a la v7:
+//  - Nueva opción "Periodo de observación" en Testeo: el monitoreo con
+//    la pregunta al apoderado, que antes estaba en el Resumen de hoy.
 //
 // Sección "Testeo": participante activo (crear, elegir, exportar).
 //
@@ -28,7 +27,11 @@ import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 import '../postura_screen.dart';
+import '../../servicios/servicio_cinturon.dart';
 import 'calibracion_screen.dart';
+import 'cinturon_screen.dart';
+import 'monitoreo_datos_screen.dart';
+import 'observacion_screen.dart';
 import 'parametros_screen.dart';
 import 'participantes_screen.dart';
 import 'registro_juegos_screen.dart';
@@ -85,6 +88,27 @@ class ConfiguracionScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 10),
+              // Periodo de observación (antes, el monitoreo del Resumen de hoy).
+              _opcion(
+                context,
+                icono: Icons.visibility_rounded,
+                titulo: 'Periodo de observación',
+                subtitulo: 'Delimitar los minutos observados y preguntar la estimación',
+                destino: const ObservacionScreen(),
+              ),
+              const SizedBox(height: 10),
+              // Cinturón: asignación y cola.
+              ValueListenableBuilder<String>(
+                valueListenable: ServicioCinturon.instancia.estado,
+                builder: (context, estado, _) => _opcion(
+                  context,
+                  icono: Icons.sync_rounded,
+                  titulo: 'Cinturón',
+                  subtitulo: estado,
+                  destino: const CinturonScreen(),
+                ),
+              ),
+              const SizedBox(height: 10),
               // Parámetros del juego: avisa si hay una variante modificada.
               ValueListenableBuilder<ParametrosJuego>(
                 valueListenable: ServicioParametros.instancia.actual,
@@ -120,6 +144,14 @@ class ConfiguracionScreen extends StatelessWidget {
                 titulo: 'Datos de prueba: juegos',
                 subtitulo: 'Métricas crudas del participante activo',
                 destino: const RegistroJuegosScreen(),
+              ),
+              const SizedBox(height: 10),
+              _opcion(
+                context,
+                icono: Icons.timeline_rounded,
+                titulo: 'Datos de prueba: monitoreo',
+                subtitulo: 'Sesiones con los dos criterios (fijo y calibrado)',
+                destino: const MonitoreoDatosScreen(),
               ),
               const SizedBox(height: 24),
               const Padding(

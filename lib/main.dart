@@ -2,16 +2,19 @@
 // main.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v5 — paso F2
+// Versión: v7 — paso F7.2
 //
-// CAMBIOS v5 respecto a la v4:
-//  - Antes de mostrar la app, carga también los parámetros del juego
-//    guardados en el panel (ServicioParametros).
+// CAMBIOS v7 respecto a la v6:
+//  - Inicia ServicioCinturon: carga los episodios ya recibidos del
+//    cinturón y, cada vez que se conecta, sincroniza su cola y le envía
+//    la calibración del participante activo.
 // ============================================================
 
 import 'package:flutter/material.dart';
 
 import 'screens/pantalla_principal.dart';
+import 'servicios/servicio_cinturon.dart';
+import 'servicios/servicio_monitoreo.dart';
 import 'servicios/servicio_parametros.dart';
 import 'servicios/servicio_participantes.dart';
 import 'tema/tema_app.dart';
@@ -21,6 +24,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ServicioParticipantes.instancia.iniciar();
   await ServicioParametros.instancia.iniciar();
+  await ServicioMonitoreo.instancia.iniciar();
+  await ServicioCinturon.instancia.iniciar();
   runApp(const MyApp());
 }
 

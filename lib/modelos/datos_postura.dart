@@ -1,8 +1,13 @@
 // ============================================================
 // datos_postura.dart
-// Fecha: 11-10-2026
+// Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — un dato en vivo del wearable, ya interpretado
+// Versión: v2 — paso F7.2
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Nuevo campo `cal`: la calibración cargada en el cinturón (firmware
+//    v8; 0 = ninguna, o firmware anterior). Desde el v8, "malaPostura"
+//    usa esa calibración; difXs/difYs siguen siendo crudos.
 //
 // Convierte el texto JSON que envía el ESP32 cada ~330 ms en un objeto
 // de Dart fácil de usar desde cualquier pantalla. Ejemplo de lo que
@@ -38,7 +43,8 @@ class DatosPostura {
   final int diffY; // diferencia cuello-cadera lateral, sin signo
   final int difXs; // la misma diferencia X, CON signo (v7)
   final int difYs; // la misma diferencia Y, CON signo (v7)
-  final bool malaPostura; // decidido por el firmware según sus umbrales
+  final bool malaPostura; // decidido por el firmware (desde v8, con la calibración cargada)
+  final int cal; // calibración cargada en el cinturón (v8); 0 = ninguna
   final bool conDireccion; // true si el firmware envía difXs/difYs (v7 o superior)
 
   const DatosPostura({
@@ -50,6 +56,7 @@ class DatosPostura {
     required this.difYs,
     required this.malaPostura,
     required this.conDireccion,
+    this.cal = 0,
   });
 
   /// Cuánto se inclina hacia adelante (+) o hacia atrás (−), en unidades.
@@ -72,6 +79,7 @@ class DatosPostura {
       difYs: leer('difYs'),
       malaPostura: json['malaPostura'] == true,
       conDireccion: json.containsKey('difXs'),
+      cal: leer('cal'),
     );
   }
 
