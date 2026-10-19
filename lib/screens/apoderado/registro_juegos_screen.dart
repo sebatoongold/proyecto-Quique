@@ -2,16 +2,11 @@
 // registro_juegos_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v6 — paso F4
+// Versión: v7 — paso F9.1
 //
-// CAMBIOS v6 respecto a la v5:
-//  - Cada pose muestra el ANÁLISIS DE SU RECORRIDO (primer movimiento,
-//    si se pasó de largo, si llegó cerca sin entrar, si las pistas
-//    sirvieron, tiempo en las viñetas) y un GRÁFICO del recorrido con
-//    la zona de la pose y las pistas. Usa los umbrales de Parámetros →
-//    Análisis de recorridos.
-//  - Si el juego quedó interrumpido, dice dónde abandonó.
-//  - Botón "Eventos" en cada juego: la línea de eventos con sus horas.
+// CAMBIOS v7 respecto a la v6:
+//  - Cada pose muestra su ANIMAL antes de la instrucción
+//    ("1. Jirafa · Siéntate muy alto — completada"), si lo tiene.
 //
 // Herramienta del diseñador (Configuración → Datos de prueba): todas
 // las métricas crudas de cada juego.
@@ -19,6 +14,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../modelos/animal_postura.dart';
 import '../../modelos/parametros_juego.dart';
 import '../../modelos/registro_juego.dart';
 import '../../servicios/almacenamiento_juegos.dart';
@@ -154,7 +150,10 @@ class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
           ],
           const Divider(height: 20, color: Colores.linea),
           for (final p in r.poses) ...[
-            Text('${p.indice + 1}. ${p.instruccion} — ${p.resultado}', style: Textos.cuerpoDestacado),
+            Text(
+                '${p.indice + 1}. ${AnimalPostura.desdeId(p.animal)?.nombre == null ? '' : '${AnimalPostura.desdeId(p.animal)!.nombre} · '}'
+                '${p.instruccion} — ${p.resultado}',
+                style: Textos.cuerpoDestacado),
             Text(
               'Entró a la zona: ${p.segundosHastaEntrar == null ? 'nunca' : _seg(p.segundosHastaEntrar!)} · '
               'Completó en: ${p.segundosHastaCompletar == null ? '—' : _seg(p.segundosHastaCompletar!)} · '

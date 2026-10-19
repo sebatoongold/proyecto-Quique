@@ -2,22 +2,12 @@
 // ejecucion_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v9 — paso F8
+// Versión: v11 — paso F9.1b
 //
-// CAMBIOS v9 respecto a la v8:
-//  - PISTA VISIBLE: con la pista, una flecha ámbar LATE sobre la figura
-//    grande, desde cómo está sentado el niño hasta la pose (se va sola
-//    cuando entra a la zona). Si lo que falta no se ve en esa vista (p. ej.
-//    encorvarse en el juego de frente), queda la flecha de la miniatura.
-//    Quique dice "¡Sigue la flecha!" o "¡Mira la pose de la esquina!".
-//    El evento 'pista' guarda dónde se mostró: dato 'figura' / 'esquina'.
-//  - Vibración opcional al aparecer la pista (apagada por defecto).
-//  - CELEBRACIÓN ANIMADA: al lograr una pose, la figura da dos saltitos y
-//    sale confeti; dura `segundosCelebracion` (ahora en el panel). En el
-//    cierre, más confeti y las poses en miniatura con su marca ✓ (las no
-//    logradas, tenues, sin cruz).
-//  - Todo se puede apagar en Parámetros → Pista y celebración (vuelve a
-//    lo de la v8).
+// CAMBIOS v11 respecto a la v10:
+//  - El ícono del PINGÜINO se refleja según el lado de la pose: se
+//    inclina hacia el mismo lado que la figura en pantalla (con o sin
+//    modo espejo). Ver _espejarIcono().
 //
 // Flujo completo: flujo_nino_actividad_guiada_v1.svg. Sigue pendiente:
 // el botón "Escuchar" (requiere una dependencia de voz) y las
@@ -30,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import '../../modelos/animal_postura.dart';
 import '../../modelos/datos_postura.dart';
 import '../../modelos/juego.dart';
 import '../../modelos/parametros_juego.dart';
@@ -43,6 +34,7 @@ import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/confeti.dart';
 import '../../widgets/figura_tu.dart';
+import '../../widgets/icono_animal.dart';
 import '../../widgets/vinetas_pose.dart';
 
 // ############################################################
@@ -92,6 +84,14 @@ const double salidaConfetiCierre = 1.2;
 // Tamaño de las miniaturas de las poses en el cierre.
 const double anchoMiniaturaCierre = 62;
 const double altoMiniaturaCierre = 80;
+
+// --- Tarjetas de postura (F9.1) ---
+// Miniatura de la pose en la esquina del juego (antes 70 × 92).
+const double anchoMiniatura = 84;
+const double altoMiniatura = 110;
+// Tamaño del ícono del animal en la tarjeta de la pose y en la miniatura.
+const double iconoTarjeta = 56;
+const double iconoMiniatura = 24;
 
 enum _Fase { partida, explicacion, pose, logrado, fin }
 
@@ -476,6 +476,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   void _empezarPose() {
     setState(() {
       _registro.poses.add(MetricaPose(indice: _indicePose, instruccion: _pose.instruccion)
+        ..animal = _pose.animal.id
         ..objetivoLateral = _pose.lateral
         ..objetivoAdelante = _pose.adelante
         ..margenLateral = _pose.margenLateral
@@ -731,7 +732,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           ),
         ),
         const SizedBox(height: 16),
-        _tarjetaTexto(_pose.instruccion, _pose.detalle),
+        _tarjetaPose(),
         const SizedBox(height: 12),
         _quique(true, fraseFija: '¡Mira cómo se hace!', caraFija: Icons.sentiment_satisfied_rounded),
         const Spacer(),
@@ -827,6 +828,49 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     );
   }
 
+  /// F9.1b: el ícono del pingüino (inclinado hacia la izquierda de la
+  /// pantalla) se refleja si la figura se inclina hacia la derecha de la
+  /// pantalla. Mismo signo que usa figura_tu.dart para la vista de frente.
+  bool _espejarIcono(Pose pose) {
+    if (pose.animal != AnimalPostura.pinguino) return false;
+    final haciaDerechaPantalla = pose.lateral * (_p.espejo ? 1 : -1) > 0;
+    return haciaDerechaPantalla;
+  }
+
+  /// F9.1: tarjeta de la pose: ícono del animal, "¡Sé una tortuga!" y,
+  /// debajo, la instrucción y el detalle.
+  Widget _tarjetaPose() {
+    final animal = _pose.animal;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 18, 14),
+      decoration: BoxDecoration(
+        color: Colores.tarjeta,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: animal.borde, width: 2),
+      ),
+      child: Row(
+        children: [
+          IconoAnimal(animal: animal, tamano: iconoTarjeta, espejar: _espejarIcono(_pose)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(animal.llamado,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colores.azul)),
+                const SizedBox(height: 2),
+                Text(_pose.instruccion,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colores.azul)),
+                if (_pose.detalle.isNotEmpty)
+                  Text(_pose.detalle, style: Textos.secundario.copyWith(fontSize: 14)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _instruccion() {
     switch (_fase) {
       case _Fase.partida:
@@ -834,9 +878,9 @@ class _EjecucionScreenState extends State<EjecucionScreen>
             'Así Quique conoce tu postura cómoda.');
       case _Fase.logrado:
         return _tarjetaTexto('¡Lo lograste!',
-            _indicePose < _poses.length - 1 ? 'Vamos con la siguiente.' : '');
+            _pose.animal.felicitacion + (_indicePose < _poses.length - 1 ? ' Vamos con la siguiente.' : ''));
       default:
-        return _tarjetaTexto(_pose.instruccion, _pose.detalle);
+        return _tarjetaPose();
     }
   }
 
@@ -902,8 +946,8 @@ class _EjecucionScreenState extends State<EjecucionScreen>
             Positioned(
               top: 10,
               left: 10,
-              width: 70,
-              height: 92,
+              width: anchoMiniatura,
+              height: altoMiniatura,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 padding: const EdgeInsets.all(4),
@@ -918,6 +962,9 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                 child: Column(
                   children: [
                     Expanded(
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
                       child: FiguraTu(
                         adelante: _pose.adelante,
                         lateral: _pose.lateral,
@@ -937,9 +984,23 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                             : null,
                         flechaHasta: _pistaActiva && !_flechaEnFigura ? _ejeDe(_pose) : null,
                       ),
+                          ),
+                          // F9.1: ícono del animal, arriba a la derecha.
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: IconoAnimal(
+                                animal: _pose.animal, tamano: iconoMiniatura, espejar: _espejarIcono(_pose)),
+                          ),
+                        ],
+                      ),
                     ),
-                    const Text('la pose',
-                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Colores.textoSecundario)),
+                    // F9.1: el animal de la pose en vez de "la pose".
+                    Text(_pose.animal.nombre,
+                        maxLines: 1,
+                        overflow: TextOverflow.fade,
+                        softWrap: false,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colores.azul)),
                   ],
                 ),
               ),
@@ -1048,7 +1109,9 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           frase = _pista.isEmpty ? '¡Ayúdame a llegar a la pose!' : _pista;
       }
       if (_pistaActiva && _comodidad != _Comodidad.comodo) {
-        frase = _flechaEnFigura ? '$frase. ¡Sigue la flecha!' : '$frase. ¡Mira la pose de la esquina!';
+        frase = _flechaEnFigura
+            ? '$frase. ¡Sigue la flecha!'
+            : '$frase. ¡Mira ${_pose.animal.conArticulo} de la esquina!';
       }
     }
     final colorBorde = fraseFija != null ? Colores.linea : (conectado ? _colorEstado : Colores.linea);
@@ -1211,7 +1274,21 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   Widget _miniaturaCierre(Pose pose, bool lograda) {
     return Opacity(
       opacity: lograda ? 1 : 0.4,
-      child: SizedBox(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _figuraCierre(pose, lograda),
+          const SizedBox(height: 4),
+          // F9.1: el nombre del animal debajo.
+          Text(pose.animal.nombre,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colores.azul)),
+        ],
+      ),
+    );
+  }
+
+  Widget _figuraCierre(Pose pose, bool lograda) {
+    return SizedBox(
         width: anchoMiniaturaCierre,
         height: altoMiniaturaCierre,
         child: Stack(
@@ -1251,7 +1328,6 @@ class _EjecucionScreenState extends State<EjecucionScreen>
               ),
           ],
         ),
-      ),
-    );
+      );
   }
 }

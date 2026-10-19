@@ -2,18 +2,12 @@
 // pose.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v4 — paso F6.2
+// Versión: v6 — paso F9.1b
 //
-// CAMBIOS v4 respecto a la v3:
-//  - Una pose puede tener una ZONA ADELANTE CON LÍMITES (`adelanteDesde`
-//    y/o `adelanteHasta`) en vez de objetivo ± margen. Un límite en null
-//    = sin límite: así se hacen zonas de UN SOLO LADO ("todo lo erguido
-//    o más", "todo lo curvado o más"). Ver errorAdelanteDe().
-//  - Cada pose puede tener sus propios SEGUNDOS para mantenerla
-//    (`segundos`; null = los del panel) y sus BRAZOS (`brazos`).
-//  - Aquí viven ahora los tipos VistaFigura y ModoBrazos (antes en
-//    figura_tu.dart).
-//  - Nueva función posesDeLoAltoALoBajoCon(parametros): el juego frontal.
+// CAMBIOS v6 respecto a la v5:
+//  - Las poses del pingüino ya no llevan detalle ("Despacito, como
+//    Quique" / "Despacito."): basta con "¡Sé un pingüino!" y hacia qué
+//    lado. Un detalle vacío ('') no se muestra.
 //
 // Una pose es una postura objetivo que el niño debe alcanzar y
 // mantener. Se mide RELATIVA a su postura cero (cómo se sienta
@@ -24,6 +18,7 @@
 //   10 unidades ≈ 6,5°, 30 unidades ≈ 19,5°.
 // ============================================================
 
+import 'animal_postura.dart';
 import 'parametros_juego.dart';
 
 // Márgenes por defecto: se toman de parametros_juego.dart (un solo
@@ -50,6 +45,7 @@ class Pose {
   final double? adelanteHasta;
   final double? segundos; // segundos para mantenerla; null = los del panel
   final ModoBrazos brazos;
+  final AnimalPostura animal; // nombre, ícono y color de la postura (F9.1)
 
   const Pose({
     required this.instruccion,
@@ -62,6 +58,7 @@ class Pose {
     this.adelanteHasta,
     this.segundos,
     this.brazos = ModoBrazos.apoyados,
+    this.animal = AnimalPostura.jirafa,
   });
 
   bool get usaRango => adelanteDesde != null || adelanteHasta != null;
@@ -93,15 +90,17 @@ class Pose {
 const List<Pose> posesImitaAQuique = [
   Pose(
     instruccion: 'Inclínate hacia tu izquierda',
-    detalle: 'Despacito, como Quique.',
+    detalle: '',
     adelante: 0,
     lateral: -18,
+    animal: AnimalPostura.pinguino,
   ),
   Pose(
     instruccion: 'Ahora hacia tu derecha',
-    detalle: 'Despacito.',
+    detalle: '',
     adelante: 0,
     lateral: 18,
+    animal: AnimalPostura.pinguino,
   ),
   Pose(
     instruccion: 'Vuelve al centro, bien derecho',
@@ -110,6 +109,7 @@ const List<Pose> posesImitaAQuique = [
     lateral: 0,
     // Aquí sí importa estar derecho: margen hacia adelante más estricto.
     margenAdelante: 10,
+    animal: AnimalPostura.jirafa,
   ),
 ];
 
@@ -128,6 +128,7 @@ List<Pose> posesImitaAQuiqueCon(ParametrosJuego p) => [
           lateral: base.lateral == 0 ? 0.0 : base.lateral.sign * p.anguloLateral,
           margenLateral: p.margenLateral,
           margenAdelante: base.lateral == 0 ? p.margenAdelanteCentro : p.margenAdelante,
+          animal: base.animal,
         ),
     ];
 
@@ -151,9 +152,10 @@ List<Pose> posesDeLoAltoALoBajoCon(ParametrosJuego p) {
         lateral: 0,
         margenLateral: margenLateralJuegoFrontal,
         adelanteHasta: p.altoHasta,
+        animal: AnimalPostura.jirafa,
       );
   return [
-    alto('Siéntate muy alto, como una jirafa', 'Estira la espalda hacia el techo.'),
+    alto('Siéntate muy alto', 'Estira la espalda hacia el techo.'),
     Pose(
       instruccion: 'Ahora curva un poquito la espalda',
       detalle: 'Solo un poco: a medio camino.',
@@ -162,6 +164,7 @@ List<Pose> posesDeLoAltoALoBajoCon(ParametrosJuego p) {
       margenLateral: margenLateralJuegoFrontal,
       adelanteDesde: p.anguloMedio - p.margenMedio,
       adelanteHasta: p.anguloMedio + p.margenMedio,
+      animal: AnimalPostura.tortuga,
     ),
     Pose(
       instruccion: 'Hazte bolita: abraza tus rodillas',
@@ -172,7 +175,8 @@ List<Pose> posesDeLoAltoALoBajoCon(ParametrosJuego p) {
       adelanteDesde: p.bolitaDesde,
       segundos: p.segundosBolita,
       brazos: ModoBrazos.abrazo,
+      animal: AnimalPostura.armadillo,
     ),
-    alto('Vuelve a sentarte muy alto', '¡Como la jirafa!'),
+    alto('Vuelve a sentarte muy alto', 'Estira otra vez la espalda.'),
   ];
 }

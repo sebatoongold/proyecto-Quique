@@ -2,14 +2,13 @@
 // figura_tu.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v8 — paso F8
+// Versión: v9 — paso F9.1b
 //
-// CAMBIOS v8 respecto a la v7:
-//  - `pulsoFlecha` (0..1, o null = sin latido): la flecha ámbar late
-//    (más gruesa y opaca en 1, más delgada y transparente en 0). La
-//    pantalla del juego lo hace oscilar con la pista.
-//  - `salto` (en cabezas): sube la figura «Tú» (no la silueta ni la zona)
-//    para el saltito de la celebración.
+// CAMBIOS v9 respecto a la v8:
+//  - El ASIENTO de la silla (vista de costado) termina antes de la
+//    rodilla: ya no sobresale por delante de las piernas (se podía leer
+//    como parte del cuerpo). La pata delantera se movió con él. Ver
+//    `largoAsiento` y `pataDelantera`.
 //
 // Qué dibuja: un niño SENTADO, de frente o de costado (con silla).
 //  - Espalda como curva continua; proporciones medidas en "cabezas" (h).
@@ -71,6 +70,11 @@ const double cabezasDeAnchoCostado = 5.0;
 // Tamaño de la figura respecto del máximo que cabe en su espacio
 // (1 = lo más grande posible; 0,85 = un poco más chica, con aire).
 const double escalaFigura = 0.85;
+// Silla (vista de costado), en cabezas desde la cadera hacia adelante:
+// hasta dónde llega el asiento y dónde va la pata delantera. Deben
+// quedar ANTES de la rodilla (largoMuslo = 1,55) para no asomarse.
+const double largoAsiento = 1.25;
+const double pataDelantera = 1.1;
 
 // Silueta, zona y recursos de cómic:
 const double grosorExtraSilueta = 1.15; // la silueta es algo más gruesa
@@ -269,11 +273,11 @@ class _PintorFigura extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     final asiento = c.dy + 0.15 * h;
     if (_costado) {
-      canvas.drawLine(Offset(c.dx - 0.6 * h, asiento), Offset(c.dx + 1.9 * h, asiento), p);
+      canvas.drawLine(Offset(c.dx - 0.6 * h, asiento), Offset(c.dx + largoAsiento * h, asiento), p);
       canvas.drawLine(Offset(c.dx - 0.55 * h, asiento), Offset(c.dx - 0.55 * h, asiento - 1.4 * h), p);
       final pata = p..strokeWidth = h * 0.12;
       canvas.drawLine(Offset(c.dx - 0.5 * h, asiento), Offset(c.dx - 0.5 * h, asiento + 1.9 * h), pata);
-      canvas.drawLine(Offset(c.dx + 1.7 * h, asiento), Offset(c.dx + 1.7 * h, asiento + 1.9 * h), pata);
+      canvas.drawLine(Offset(c.dx + pataDelantera * h, asiento), Offset(c.dx + pataDelantera * h, asiento + 1.9 * h), pata);
     } else {
       canvas.drawLine(Offset(c.dx - 1.2 * h, asiento + 0.35 * h), Offset(c.dx + 1.2 * h, asiento + 0.35 * h), p);
     }

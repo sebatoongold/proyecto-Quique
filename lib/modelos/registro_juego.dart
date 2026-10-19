@@ -2,12 +2,12 @@
 // registro_juego.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v6 — paso F6.2
+// Versión: v7 — paso F9.1
 //
-// CAMBIOS v6 respecto a la v5:
-//  - Cada pose guarda también su ZONA DE LÍMITES en el eje adelante
-//    (`zonaAdelanteDesde`/`zonaAdelanteHasta`; null = sin límite), para
-//    analizar bien las poses de un solo lado del juego frontal.
+// CAMBIOS v7 respecto a la v6:
+//  - Cada pose guarda su ANIMAL (`animal`: 'jirafa', 'tortuga',
+//    'armadillo' o 'pinguino'; null en juegos anteriores a F9.1). Sirve
+//    para cruzar el juego con las respuestas del quiz (F9.2).
 //
 // Qué guarda (resumen):
 //  - Cada juego guarda su LÍNEA DE EVENTOS (`eventos`): qué pasó y en
@@ -46,6 +46,7 @@
 class MetricaPose {
   final int indice; // 0, 1, 2…
   final String instruccion; // para reconocer la pose al leer el registro
+  String? animal; // F9.1: id del animal de la pose (null = juego anterior)
   double? segundosHastaEntrar;
   double? segundosHastaCompletar;
   int salidasDeZona = 0;
@@ -75,6 +76,7 @@ class MetricaPose {
   Map<String, dynamic> toJson() => {
         'indice': indice,
         'instruccion': instruccion,
+        'animal': animal,
         'segundosHastaEntrar': segundosHastaEntrar,
         'segundosHastaCompletar': segundosHastaCompletar,
         'salidasDeZona': salidasDeZona,
@@ -99,6 +101,7 @@ class MetricaPose {
       indice: (j['indice'] as num?)?.toInt() ?? 0,
       instruccion: j['instruccion'] as String? ?? '',
     );
+    m.animal = j['animal'] as String?;
     m.segundosHastaEntrar = (j['segundosHastaEntrar'] as num?)?.toDouble();
     m.segundosHastaCompletar = (j['segundosHastaCompletar'] as num?)?.toDouble();
     m.salidasDeZona = (j['salidasDeZona'] as num?)?.toInt() ?? 0;
