@@ -2,19 +2,20 @@
 // parametros_juego.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v6 — paso F4
+// Versión: v7 — paso F6.2
 //
-// CAMBIOS v6 respecto a la v5:
-//  - Tres umbrales para ANALIZAR los recorridos de las poses (solo se
-//    usan en el modo desarrollador: Datos de prueba y exportación; NO
-//    cambian cómo se juega). Ver analisis_recorrido.dart:
-//      umbralMovimiento     cuánto tiene que alejarse de donde partió
-//                           para contar como "se movió" (y cuánto tiene
-//                           que acercarse para decir que una pista sirvió)
-//      factorCercaAnalisis  "llegó cerca sin entrar" = estuvo a menos de
-//                           este múltiplo del margen de la pose
-//      segundosVentanaPista cuántos segundos después de la pista se mira
-//                           si se acercó
+// CAMBIOS v7 respecto a la v6:
+//  - Parámetros del JUEGO FRONTAL ("De lo alto a lo bajo", vista de
+//    costado). Ver posesDeLoAltoALoBajoCon() en pose.dart:
+//      altoHasta       el "alto" cuenta si adelante ≤ esto (todo lo
+//                      erguido o más)
+//      anguloMedio     cuánto curvarse en el "medio camino"
+//      margenMedio     ± alrededor de anguloMedio (zona angosta)
+//      bolitaDesde     la "bolita" cuenta si adelante ≥ esto
+//      segundosBolita  cuánto mantener la bolita (menos que las demás)
+//      ceroFrontal     de dónde se mide: 'fijo' (el cero del sensor, igual
+//                      para todos), 'calibrado' (la calibración del
+//                      participante) o 'automatico' (2 s quieto al empezar)
 //
 // Los parámetros del juego que se pueden cambiar DESDE LA APP
 // (Configuración → Parámetros del juego), sin recompilar. Sirven para
@@ -61,6 +62,14 @@ const bool defectoCinturonCalibrado = true;
 const double defectoUmbralMovimiento = 4;
 const double defectoFactorCercaAnalisis = 1.5;
 const double defectoSegundosVentanaPista = 5;
+// Juego frontal (ver arriba). 15 u ≈ 9,6°; 30 u ≈ 19,5°.
+const double defectoAltoHasta = 5;
+const double defectoAnguloMedio = 15;
+const double defectoMargenMedio = 6;
+const double defectoBolitaDesde = 30;
+const double defectoSegundosBolita = 5;
+const String defectoCeroFrontal = 'fijo'; // 'fijo' | 'calibrado' | 'automatico'
+const List<String> opcionesCeroFrontal = ['fijo', 'calibrado', 'automatico'];
 
 // ---------- RANGOS DE LOS DESLIZADORES DEL PANEL ----------
 // (mínimo, máximo, paso). Cambiarlos aquí cambia el panel.
@@ -75,6 +84,11 @@ const rangoAmplificacion = (min: 1.0, max: 2.5, paso: 0.1);
 const rangoUmbralMovimiento = (min: 1.0, max: 12.0, paso: 1.0);
 const rangoFactorCercaAnalisis = (min: 1.1, max: 3.0, paso: 0.1);
 const rangoSegundosVentanaPista = (min: 2.0, max: 15.0, paso: 1.0);
+const rangoAltoHasta = (min: -5.0, max: 15.0, paso: 1.0);
+const rangoAnguloMedio = (min: 6.0, max: 30.0, paso: 1.0);
+const rangoMargenMedio = (min: 2.0, max: 12.0, paso: 1.0);
+const rangoBolitaDesde = (min: 15.0, max: 60.0, paso: 1.0);
+const rangoSegundosBolita = (min: 2.0, max: 15.0, paso: 1.0);
 
 class ParametrosJuego {
   final double anguloLateral;
@@ -92,6 +106,12 @@ class ParametrosJuego {
   final double umbralMovimiento;
   final double factorCercaAnalisis;
   final double segundosVentanaPista;
+  final double altoHasta;
+  final double anguloMedio;
+  final double margenMedio;
+  final double bolitaDesde;
+  final double segundosBolita;
+  final String ceroFrontal;
 
   const ParametrosJuego({
     this.anguloLateral = defectoAnguloLateral,
@@ -109,6 +129,12 @@ class ParametrosJuego {
     this.umbralMovimiento = defectoUmbralMovimiento,
     this.factorCercaAnalisis = defectoFactorCercaAnalisis,
     this.segundosVentanaPista = defectoSegundosVentanaPista,
+    this.altoHasta = defectoAltoHasta,
+    this.anguloMedio = defectoAnguloMedio,
+    this.margenMedio = defectoMargenMedio,
+    this.bolitaDesde = defectoBolitaDesde,
+    this.segundosBolita = defectoSegundosBolita,
+    this.ceroFrontal = defectoCeroFrontal,
   });
 
   /// true si todo está en los valores por defecto.
@@ -130,6 +156,12 @@ class ParametrosJuego {
     double? umbralMovimiento,
     double? factorCercaAnalisis,
     double? segundosVentanaPista,
+    double? altoHasta,
+    double? anguloMedio,
+    double? margenMedio,
+    double? bolitaDesde,
+    double? segundosBolita,
+    String? ceroFrontal,
   }) =>
       ParametrosJuego(
         anguloLateral: anguloLateral ?? this.anguloLateral,
@@ -147,6 +179,12 @@ class ParametrosJuego {
         umbralMovimiento: umbralMovimiento ?? this.umbralMovimiento,
         factorCercaAnalisis: factorCercaAnalisis ?? this.factorCercaAnalisis,
         segundosVentanaPista: segundosVentanaPista ?? this.segundosVentanaPista,
+        altoHasta: altoHasta ?? this.altoHasta,
+        anguloMedio: anguloMedio ?? this.anguloMedio,
+        margenMedio: margenMedio ?? this.margenMedio,
+        bolitaDesde: bolitaDesde ?? this.bolitaDesde,
+        segundosBolita: segundosBolita ?? this.segundosBolita,
+        ceroFrontal: ceroFrontal ?? this.ceroFrontal,
       );
 
   Map<String, dynamic> toJson() => {
@@ -165,6 +203,12 @@ class ParametrosJuego {
         'umbralMovimiento': umbralMovimiento,
         'factorCercaAnalisis': factorCercaAnalisis,
         'segundosVentanaPista': segundosVentanaPista,
+        'altoHasta': altoHasta,
+        'anguloMedio': anguloMedio,
+        'margenMedio': margenMedio,
+        'bolitaDesde': bolitaDesde,
+        'segundosBolita': segundosBolita,
+        'ceroFrontal': ceroFrontal,
       };
 
   /// Lee lo guardado; lo que falte o esté mal queda en su valor por defecto.
@@ -187,6 +231,12 @@ class ParametrosJuego {
       umbralMovimiento: n('umbralMovimiento', defectoUmbralMovimiento),
       factorCercaAnalisis: n('factorCercaAnalisis', defectoFactorCercaAnalisis),
       segundosVentanaPista: n('segundosVentanaPista', defectoSegundosVentanaPista),
+      altoHasta: n('altoHasta', defectoAltoHasta),
+      anguloMedio: n('anguloMedio', defectoAnguloMedio),
+      margenMedio: n('margenMedio', defectoMargenMedio),
+      bolitaDesde: n('bolitaDesde', defectoBolitaDesde),
+      segundosBolita: n('segundosBolita', defectoSegundosBolita),
+      ceroFrontal: opcionesCeroFrontal.contains(j['ceroFrontal']) ? j['ceroFrontal'] as String : defectoCeroFrontal,
     );
   }
 }

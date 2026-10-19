@@ -2,12 +2,15 @@
 // parametros_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v6 — paso F4
+// Versión: v7 — paso F6.2
 //
-// CAMBIOS v6 respecto a la v5:
-//  - Nueva sección "Análisis de recorridos": los tres umbrales con que
-//    se leen los recorridos en Datos de prueba. No cambian el juego, y
-//    se aplican también a los juegos ya jugados.
+// CAMBIOS v7 respecto a la v6:
+//  - Nueva sección "Juego frontal" («De lo alto a lo bajo»): desde
+//    dónde cuenta el alto, cuánto curvarse en el medio camino y su
+//    margen, desde dónde cuenta la bolita, sus segundos, y el tipo de
+//    cero (fijo / calibrado / automático).
+//  - Las secciones anteriores ("Poses", "Postura cero") se aclaran como
+//    del juego lateral («Imita a Quique»).
 //
 // Herramienta del INVESTIGADOR (Configuración → Parámetros del juego):
 // cambia cómo se comporta el juego sin recompilar, para probar
@@ -91,7 +94,7 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
               _estado(),
               const SizedBox(height: 20),
 
-              _seccion('Postura cero'),
+              _seccion('Juego lateral: postura cero'),
               _interruptor(
                 titulo: 'Usar la calibración del participante',
                 ayuda: _p.ceroCalibrado
@@ -102,7 +105,7 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
                 alCambiar: (v) => _cambiar(_p.copyWith(ceroCalibrado: v), guardar: true),
               ),
 
-              _seccion('Poses'),
+              _seccion('Juego lateral: poses'),
               _deslizador(
                 titulo: 'Cuánto inclinarse (poses de lado)',
                 ayuda: 'Más alto = la pose pide inclinarse más.',
@@ -157,6 +160,90 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
                 rango: rangoSegundosAyuda,
                 texto: '${_p.segundosAyuda.round()} s',
                 alCambiar: (v, g) => _cambiar(_p.copyWith(segundosAyuda: v), guardar: g),
+              ),
+
+              _seccion('Juego frontal'),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(4, 0, 4, 10),
+                child: Text(
+                  '«De lo alto a lo bajo», de costado: alto → medio camino → bolita → alto. '
+                  'Las unidades miden cuánto se CURVA la espalda (adelante = +).',
+                  style: Textos.secundario,
+                ),
+              ),
+              _deslizador(
+                titulo: 'Alto: cuenta hasta',
+                ayuda: 'El "alto" cuenta todo lo que esté por debajo de esto: erguido o más '
+                    '(un solo lado). Más alto = más fácil.',
+                valor: _p.altoHasta,
+                rango: rangoAltoHasta,
+                texto: '≤ ${_p.altoHasta.round()} u',
+                alCambiar: (v, g) => _cambiar(_p.copyWith(altoHasta: v), guardar: g),
+              ),
+              _deslizador(
+                titulo: 'Medio camino: cuánto curvarse',
+                ayuda: 'La pose de control fino: ni alto ni bolita.',
+                valor: _p.anguloMedio,
+                rango: rangoAnguloMedio,
+                texto: '${_p.anguloMedio.round()} u ${_grados(_p.anguloMedio)}',
+                alCambiar: (v, g) => _cambiar(_p.copyWith(anguloMedio: v), guardar: g),
+              ),
+              _deslizador(
+                titulo: 'Medio camino: margen',
+                ayuda: 'Cuánto puede desviarse del medio camino (hacia cualquier lado). '
+                    'Más angosto = más control fino.',
+                valor: _p.margenMedio,
+                rango: rangoMargenMedio,
+                texto: '± ${_p.margenMedio.round()} u',
+                alCambiar: (v, g) => _cambiar(_p.copyWith(margenMedio: v), guardar: g),
+              ),
+              _deslizador(
+                titulo: 'Bolita: cuenta desde',
+                ayuda: 'La "bolita" cuenta todo lo que esté por encima de esto: curvado o más '
+                    '(un solo lado). Más bajo = más fácil.',
+                valor: _p.bolitaDesde,
+                rango: rangoBolitaDesde,
+                texto: '≥ ${_p.bolitaDesde.round()} u ${_grados(_p.bolitaDesde)}',
+                alCambiar: (v, g) => _cambiar(_p.copyWith(bolitaDesde: v), guardar: g),
+              ),
+              _deslizador(
+                titulo: 'Bolita: segundos',
+                ayuda: 'Menos que las demás: no se pide mantener mucho la postura a evitar.',
+                valor: _p.segundosBolita,
+                rango: rangoSegundosBolita,
+                texto: '${_p.segundosBolita.round()} s',
+                alCambiar: (v, g) => _cambiar(_p.copyWith(segundosBolita: v), guardar: g),
+              ),
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                decoration: BoxDecoration(color: Colores.tarjeta, borderRadius: BorderRadius.circular(18)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Cero del juego frontal', style: Textos.cuerpoDestacado),
+                    const SizedBox(height: 2),
+                    Text(
+                      switch (_p.ceroFrontal) {
+                        'fijo' => 'Fijo: el cero del sensor, igual para todos. Parte directo en la primera viñeta.',
+                        'calibrado' => 'Calibrado: desde la calibración del participante (si no tiene, automático).',
+                        _ => 'Automático: 2 s quieto al empezar, como el juego lateral.',
+                      },
+                      style: Textos.secundario,
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<String>(
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(value: 'fijo', label: Text('Fijo')),
+                        ButtonSegment(value: 'calibrado', label: Text('Calibrado')),
+                        ButtonSegment(value: 'automatico', label: Text('Automático')),
+                      ],
+                      selected: {_p.ceroFrontal},
+                      onSelectionChanged: (s) => _cambiar(_p.copyWith(ceroFrontal: s.first), guardar: true),
+                    ),
+                  ],
+                ),
               ),
 
               _seccion('Figura'),

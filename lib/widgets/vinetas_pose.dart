@@ -1,14 +1,18 @@
 // ============================================================
 // vinetas_pose.dart
-// Fecha: 12-10-2026
+// Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso E (lenguaje de cómic)
+// Versión: v3 — paso F6.2
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Viñeta 2: figura fantasma de la posición de partida + flecha curva
-//    hacia donde hay que moverse (de dónde viene y hacia dónde va).
-//  - Viñeta 3: marcas de "quieto" junto a la cabeza (mantener la pose).
-//  - Sin los puntos de los sensores: las viñetas son el ejemplo, no el niño.
+// CAMBIOS v3 respecto a la v2:
+//  - Funciona con las DOS VISTAS (`vista`): de frente (juego lateral) se
+//    anima el eje lateral; de costado (juego frontal) el eje adelante.
+//  - La última viñeta usa los BRAZOS de la pose (ej.: abrazando las
+//    rodillas en la bolita).
+//
+// Viñeta 2: figura fantasma de dónde parte + flecha hacia dónde va.
+// Viñeta 3: marcas de "quieto" (mantener la pose). Sin sensores: las
+// viñetas son el ejemplo, no el niño.
 //
 // Tres viñetas que muestran cómo llegar a la pose: cómo empezar, el
 // movimiento a medio camino, y la pose final. Sin animación (decisión
@@ -32,12 +36,14 @@ class VinetasPose extends StatelessWidget {
   final Pose pose;
   final double lateralInicio; // de dónde parte (la pose anterior, o 0)
   final double adelanteInicio;
+  final VistaFigura vista;
 
   const VinetasPose({
     super.key,
     required this.pose,
     this.lateralInicio = 0,
     this.adelanteInicio = 0,
+    this.vista = VistaFigura.frente,
   });
 
   @override
@@ -58,6 +64,10 @@ class VinetasPose extends StatelessWidget {
     final lateral = lateralInicio + (pose.lateral - lateralInicio) * t;
     final adelante = adelanteInicio + (pose.adelante - adelanteInicio) * t;
     final esFinal = i == 2;
+    // Eje que se anima según la vista (fantasma y flecha van en ese eje).
+    final costado = vista == VistaFigura.costado;
+    final inicioEje = costado ? adelanteInicio : lateralInicio;
+    final finEje = costado ? pose.adelante : pose.lateral;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
@@ -83,11 +93,13 @@ class VinetasPose extends StatelessWidget {
               mostrarSilueta: false,
               mostrarSensores: false,
               // Viñeta 2: de dónde viene (fantasma) y hacia dónde va (flecha).
-              fantasmaLateral: i == 1 ? lateralInicio : null,
-              flechaDesde: i == 1 ? lateralInicio : null,
-              flechaHasta: i == 1 ? pose.lateral : null,
+              fantasmaLateral: i == 1 ? inicioEje : null,
+              flechaDesde: i == 1 ? inicioEje : null,
+              flechaHasta: i == 1 ? finEje : null,
               // Viñeta 3: "¡quédate así!".
               marcasQuieto: esFinal,
+              vista: vista,
+              brazos: esFinal ? pose.brazos : ModoBrazos.apoyados,
             ),
           ),
           Text(

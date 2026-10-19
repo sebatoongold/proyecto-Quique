@@ -2,9 +2,14 @@
 // registro_juego.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v5 — paso F4
+// Versión: v6 — paso F6.2
 //
-// CAMBIOS v5 respecto a la v4:
+// CAMBIOS v6 respecto a la v5:
+//  - Cada pose guarda también su ZONA DE LÍMITES en el eje adelante
+//    (`zonaAdelanteDesde`/`zonaAdelanteHasta`; null = sin límite), para
+//    analizar bien las poses de un solo lado del juego frontal.
+//
+// Qué guarda (resumen):
 //  - Cada juego guarda su LÍNEA DE EVENTOS (`eventos`): qué pasó y en
 //    qué milisegundo desde el inicio del juego (viñeta, "¡Vamos!",
 //    entró/salió de la zona, pista, ayuda y su respuesta, completó,
@@ -53,6 +58,8 @@ class MetricaPose {
   double? objetivoAdelante;
   double? margenLateral;
   double? margenAdelante; // null = no se evaluaba adelante
+  double? zonaAdelanteDesde; // F6.2: zona de límites (null = sin límite)
+  double? zonaAdelanteHasta;
 
   // F4: recorrido. Tres listas del mismo largo.
   final List<int> recorridoMs = []; // ms desde "¡Vamos!"
@@ -78,6 +85,8 @@ class MetricaPose {
         'objetivoAdelante': objetivoAdelante,
         'margenLateral': margenLateral,
         'margenAdelante': margenAdelante,
+        'zonaAdelanteDesde': zonaAdelanteDesde,
+        'zonaAdelanteHasta': zonaAdelanteHasta,
         'recorrido': {
           'ms': recorridoMs,
           'lateral': recorridoLateral,
@@ -100,6 +109,8 @@ class MetricaPose {
     m.objetivoAdelante = (j['objetivoAdelante'] as num?)?.toDouble();
     m.margenLateral = (j['margenLateral'] as num?)?.toDouble();
     m.margenAdelante = (j['margenAdelante'] as num?)?.toDouble();
+    m.zonaAdelanteDesde = (j['zonaAdelanteDesde'] as num?)?.toDouble();
+    m.zonaAdelanteHasta = (j['zonaAdelanteHasta'] as num?)?.toDouble();
     final r = j['recorrido'];
     if (r is Map<String, dynamic>) {
       final ms = (r['ms'] as List?)?.map((e) => (e as num).toInt()).toList() ?? [];

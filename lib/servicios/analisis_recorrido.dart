@@ -2,7 +2,16 @@
 // analisis_recorrido.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso F4 (qué dice el recorrido de cada pose)
+// Versión: v2 — paso F6.2
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Entiende las poses con ZONA DE LÍMITES del juego frontal:
+//      · zona con dos límites (medio camino): el objetivo es el centro y
+//        el margen, la mitad del ancho;
+//      · zona de un solo lado (alto, bolita): el objetivo es el límite;
+//        "se pasó de largo" no aplica (ir más allá también cuenta), y
+//        "llegó cerca" se mide hasta el límite con un margen de
+//        referencia de `margenReferenciaUnLado` unidades.
 //
 // Lee el RECORRIDO de una pose (cada lectura desde "¡Vamos!") y lo
 // resume en datos que responden preguntas del testeo. Solo para el
@@ -33,6 +42,11 @@
 
 import '../modelos/parametros_juego.dart';
 import '../modelos/registro_juego.dart';
+
+// ---------- PARÁMETROS AJUSTABLES ----------
+// Margen de referencia para "llegó cerca" en zonas de un solo lado
+// (no tienen margen propio). Se multiplica por factorCercaAnalisis.
+const double margenReferenciaUnLado = 6;
 
 class AnalisisPose {
   final String ejePrincipal; // 'lateral' | 'adelante'
@@ -82,9 +96,23 @@ class AnalisisRecorrido {
     // Eje principal: donde hay más camino por recorrer.
     final lateral = (objL - l0).abs() >= (objA - a0).abs();
     final eje = lateral ? m.recorridoLateral : m.recorridoAdelante;
-    final obj = lateral ? objL : objA;
+    var obj = lateral ? objL : objA;
     final inicio = eje.first;
-    final margen = lateral ? (m.margenLateral ?? 0) : (m.margenAdelante ?? m.margenLateral ?? 0);
+    var margen = lateral ? (m.margenLateral ?? 0) : (m.margenAdelante ?? m.margenLateral ?? 0);
+    // Zonas de límites (juego frontal), en el eje adelante.
+    final zd = m.zonaAdelanteDesde, zh = m.zonaAdelanteHasta;
+    var unLado = false;
+    if (!lateral && (zd != null || zh != null)) {
+      if (zd != null && zh != null) {
+        obj = (zd + zh) / 2;
+        margen = (zh - zd) / 2;
+      } else {
+        unLado = true;
+        // El objetivo es el límite que hay que alcanzar.
+        obj = zd ?? zh!;
+        margen = 0;
+      }
+    }
     final haciaObjetivo = (obj - inicio).sign; // +1, -1 o 0
 
     // Primer movimiento.
@@ -102,7 +130,7 @@ class AnalisisRecorrido {
     // Se pasó de largo: más allá del objetivo, en la dirección del
     // movimiento, por más que el margen.
     var sePaso = false;
-    if (haciaObjetivo != 0) {
+    if (haciaObjetivo != 0 && !unLado) {
       for (final v in eje) {
         if ((v - obj) * haciaObjetivo > margen) {
           sePaso = true;
@@ -117,7 +145,10 @@ class AnalisisRecorrido {
       final e = (v - obj).abs();
       if (e < minError) minError = e;
     }
-    final cercaSinEntrar = m.segundosHastaEntrar == null && minError <= margen * p.factorCercaAnalisis;
+    // Cerca = a menos de factorCerca × margen del objetivo (en zonas de
+    // un solo lado, del límite, con el margen de referencia).
+    final margenCerca = unLado ? margenReferenciaUnLado : margen;
+    final cercaSinEntrar = m.segundosHastaEntrar == null && minError <= margenCerca * p.factorCercaAnalisis;
 
     // Pistas: ¿se acercó después?
     final msVamos = _msEvento(juego, 'vamos', m.indice);

@@ -2,18 +2,21 @@
 // ejecucion_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v7 — paso F4
+// Versión: v8 — paso F6.2
 //
-// CAMBIOS v7 respecto a la v6:
-//  - REGISTRO AUTOMÁTICO (para el modo desarrollador): el juego anota
-//    cada evento con su hora (viñeta, "¡Vamos!", entró/salió de la
-//    zona, pista, ayuda y su respuesta, completó, pausa, salida, fin,
-//    "Otra vez"). Ver la lista en registro_juego.dart (EventoJuego).
-//  - RECORRIDO de cada pose: desde "¡Vamos!" se guarda cada lectura
-//    NUEVA del cinturón (no cada cuadro de pantalla), relativa al cero,
-//    mientras no esté en pausa. Junto con el objetivo y los márgenes de
-//    la pose, para analizarlo después (analisis_recorrido.dart).
-//  - El juego se comporta exactamente igual: solo anota.
+// CAMBIOS v8 respecto a la v7:
+//  - La pantalla recibe QUÉ JUEGO jugar (`juego`, ver modelos/juego.dart):
+//    su nombre, su vista (frente o costado) y sus poses. Por defecto,
+//    «Imita a Quique», así que todo lo anterior funciona igual.
+//  - Poses con ZONA DE LÍMITES en el eje adelante (zonas de un solo
+//    lado): se evalúan con Pose.errorAdelanteDe(). La figura dibuja esa
+//    zona de costado.
+//  - Cada pose puede tener sus propios segundos (la bolita dura menos) y
+//    sus brazos (abrazando las rodillas).
+//  - CERO del juego frontal (Parámetros → Juego frontal): 'fijo' (el
+//    cero del sensor; parte directo en la primera viñeta), 'calibrado'
+//    o 'automatico'. El juego lateral sigue como antes.
+//  - Pista de costado: "Curva un poquito más la espalda" / "Endereza…".
 //
 // Flujo completo: flujo_nino_actividad_guiada_v1.svg. Sigue pendiente:
 // el botón "Escuchar" (requiere una dependencia de voz) y las
@@ -26,6 +29,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../../modelos/datos_postura.dart';
+import '../../modelos/juego.dart';
 import '../../modelos/parametros_juego.dart';
 import '../../modelos/pose.dart';
 import '../../modelos/registro_juego.dart';
@@ -58,8 +62,13 @@ const double toleranciaQuieto = 4;
 const double velocidadSuavizado = 8;
 // Duración de la celebración breve al completar una pose.
 const double segundosCelebracion = 1.5;
-// Identificador del juego en los registros guardados.
-const String idJuego = 'imita_a_quique';
+// Cerca de la zona (Quique "un poco incómodo") en poses con zona de
+// límites: a menos de estas unidades del límite.
+const double distanciaCercaRango = 8;
+// Límites que se dibujan para el lado "sin límite" de una zona de un
+// solo lado (solo dibujo).
+const double dibujoZonaMin = -40;
+const double dibujoZonaMax = 85;
 
 enum _Fase { partida, explicacion, pose, logrado, fin }
 
@@ -73,11 +82,11 @@ class _Muestra {
 }
 
 class EjecucionScreen extends StatefulWidget {
-  // Poses fijas para otro juego; null = las de «Imita a Quique» con los
-  // números del panel de parámetros.
+  final Juego juego;
+  // Poses fijas (pruebas); null = las del juego con los números del panel.
   final List<Pose>? poses;
 
-  const EjecucionScreen({super.key, this.poses});
+  const EjecucionScreen({super.key, this.juego = juegoImitaAQuique, this.poses});
 
   @override
   State<EjecucionScreen> createState() => _EjecucionScreenState();
@@ -156,14 +165,43 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   /// Lee los parámetros vigentes y empieza un registro nuevo con ellos.
   void _nuevoRegistro() {
     _p = ServicioParametros.instancia.actual.value;
-    _poses = widget.poses ?? posesImitaAQuiqueCon(_p);
-    _registro = RegistroJuego(juego: idJuego, inicio: DateTime.now())
+    _poses = widget.poses ?? widget.juego.poses(_p);
+    _registro = RegistroJuego(juego: widget.juego.id, inicio: DateTime.now())
       ..parametros = _p.toJson();
   }
 
   /// Decide de dónde sale la postura cero de este juego.
   void _aplicarCero() {
     final cal = ServicioParticipantes.instancia.activo.value?.calibracion;
+    // Juego frontal: su propio tipo de cero (Parámetros → Juego frontal).
+    if (widget.juego.esFrontal) {
+      final tipo = _p.ceroFrontal;
+      if (tipo == 'fijo') {
+        _ceroAdelante = 0;
+        _ceroLateral = 0;
+        _registro
+          ..ceroAdelante = 0
+          ..ceroLateral = 0
+          ..tipoCero = 'fijo';
+        _registro.evento('cero', dato: 'fijo');
+        _mostrarExplicacion(0); // sin fase de partida
+        return;
+      }
+      if (tipo == 'calibrado' && cal != null) {
+        _ceroAdelante = cal.adelante;
+        _ceroLateral = cal.lateral;
+        _registro
+          ..ceroAdelante = cal.adelante
+          ..ceroLateral = cal.lateral
+          ..tipoCero = 'calibrado';
+        _registro.evento('cero', dato: 'calibrado');
+        _mostrarExplicacion(0);
+        return;
+      }
+      _registro.tipoCero = tipo == 'calibrado' ? 'automatico_sin_calibracion' : 'automatico';
+      _fase = _Fase.partida;
+      return;
+    }
     if (_p.ceroCalibrado && cal != null) {
       _ceroAdelante = cal.adelante;
       _ceroLateral = cal.lateral;
@@ -177,6 +215,24 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       _registro.tipoCero = _p.ceroCalibrado ? 'automatico_sin_calibracion' : 'automatico';
       _fase = _Fase.partida;
     }
+  }
+
+  bool get _costado => widget.juego.vista == VistaFigura.costado;
+
+  /// Segundos para mantener la pose actual (la pose puede tener los suyos).
+  double get _segundosPose => _pose.segundos ?? _p.segundosMantener;
+
+  /// Valor de una pose en el eje de la vista (para flechas).
+  double _ejeDe(Pose p) => _costado ? p.adelante : p.lateral;
+
+  /// Zona que se DIBUJA de costado: los límites de la pose (o, si no
+  /// tiene, objetivo ± margen). El lado "sin límite" se dibuja amplio.
+  (double, double) get _zonaDibujo {
+    if (_pose.usaRango) {
+      return (_pose.adelanteDesde ?? dibujoZonaMin, _pose.adelanteHasta ?? dibujoZonaMax);
+    }
+    final m = _pose.margenAdelante ?? 10;
+    return (_pose.adelante - m, _pose.adelante + m);
   }
 
   // ------------------------------------------------------------
@@ -278,20 +334,23 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     _tiempoEnPose += dt;
 
     final errorLateral = _pose.lateral - (_lateral - _ceroLateral);
-    final errorAdelante = _pose.adelante - (_adelante - _ceroAdelante);
+    // Con zona de límites: lo que falta hasta el límite más cercano.
+    final errorAdelante = _pose.errorAdelanteDe(_adelante - _ceroAdelante);
     _errorLateral = errorLateral;
     _errorAdelante = errorAdelante;
 
     final margenL = _pose.margenLateral;
     final margenA = _pose.margenAdelante; // null = no se evalúa
     final okLateral = errorLateral.abs() <= margenL;
-    final okAdelante = margenA == null || errorAdelante.abs() <= margenA;
+    final okAdelante = _pose.adelanteDentro(errorAdelante);
 
     if (okLateral && okAdelante) _ultimoDentro = ahora;
     final dentro = ahora - _ultimoDentro <= graciaSalida;
 
     final cercaLateral = errorLateral.abs() <= margenL * factorCerca;
-    final cercaAdelante = margenA == null || errorAdelante.abs() <= margenA * factorCerca;
+    final cercaAdelante = _pose.usaRango
+        ? errorAdelante.abs() <= distanciaCercaRango
+        : (margenA == null || errorAdelante.abs() <= margenA * factorCerca);
     _comodidad = dentro
         ? _Comodidad.comodo
         : (cercaLateral && cercaAdelante ? _Comodidad.pocoIncomodo : _Comodidad.incomodo);
@@ -302,7 +361,9 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     } else if (!okAdelante) {
       _pista = errorAdelante < 0
           ? 'Endereza un poquito la espalda'
-          : 'Inclínate un poquito hacia adelante';
+          : (widget.juego.esFrontal
+              ? 'Curva un poquito más la espalda'
+              : 'Inclínate un poquito hacia adelante');
     } else {
       _pista = errorLateral < 0
           ? 'Un poquito más hacia tu izquierda'
@@ -326,8 +387,8 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       _tiempoSinAvance = 0;
       _pistaActiva = false;
       _progreso += dt; // fuera de la zona no suma: se congela
-      if (_progreso >= _p.segundosMantener) {
-        _progreso = _p.segundosMantener;
+      if (_progreso >= _segundosPose) {
+        _progreso = _segundosPose;
         metrica.segundosHastaCompletar = _tiempoEnPose;
         metrica.resultado = 'completada';
         _registro.evento('completo', pose: _indicePose);
@@ -368,7 +429,9 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         ..objetivoLateral = _pose.lateral
         ..objetivoAdelante = _pose.adelante
         ..margenLateral = _pose.margenLateral
-        ..margenAdelante = _pose.margenAdelante);
+        ..margenAdelante = _pose.margenAdelante
+        ..zonaAdelanteDesde = _pose.adelanteDesde
+        ..zonaAdelanteHasta = _pose.adelanteHasta);
       _registro.evento('vamos', pose: _indicePose);
       _horaVamos = DateTime.now();
       _progreso = 0;
@@ -613,6 +676,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
             pose: _pose,
             lateralInicio: anterior?.lateral ?? 0,
             adelanteInicio: anterior?.adelante ?? 0,
+            vista: widget.juego.vista,
           ),
         ),
         const SizedBox(height: 16),
@@ -650,7 +714,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
 
   Widget _encabezado() {
     final titulo = _fase == _Fase.partida
-        ? 'Imita a Quique'
+        ? widget.juego.nombre
         : 'Pose ${_indicePose + 1} de ${_poses.length}';
     return Row(
       children: [
@@ -754,7 +818,13 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                 siluetaAdelante: enPartida ? 0 : _pose.adelante,
                 siluetaLateral: enPartida ? 0 : _pose.lateral,
                 color: _colorEstado,
-                margenLateral: enPartida ? null : _pose.margenLateral,
+                vista: widget.juego.vista,
+                brazosSilueta: enPartida ? ModoBrazos.apoyados : _pose.brazos,
+                // De frente: zona = silueta ± margen lateral.
+                margenLateral: enPartida || _costado ? null : _pose.margenLateral,
+                // De costado: zona en el eje adelante (puede ser de un solo lado).
+                zonaDesde: enPartida || !_costado ? null : _zonaDibujo.$1,
+                zonaHasta: enPartida || !_costado ? null : _zonaDibujo.$2,
               ),
             ),
           ),
@@ -787,11 +857,15 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                         color: Colores.comodo,
                         mostrarSilueta: false,
                         mostrarSensores: false,
-                        // Con la pista: flecha desde la pose anterior hasta esta.
+                        mostrarSilla: false,
+                        vista: widget.juego.vista,
+                        brazos: _pose.brazos,
+                        // Con la pista: flecha desde la pose anterior hasta esta
+                        // (en el eje de la vista).
                         flechaDesde: _pistaActiva
-                            ? (_indicePose == 0 ? 0 : _poses[_indicePose - 1].lateral)
+                            ? (_indicePose == 0 ? 0 : _ejeDe(_poses[_indicePose - 1]))
                             : null,
-                        flechaHasta: _pistaActiva ? _pose.lateral : null,
+                        flechaHasta: _pistaActiva ? _ejeDe(_pose) : null,
                       ),
                     ),
                     const Text('la pose',
@@ -819,7 +893,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
               child: Text(
                 'lado: falta ${_errorLateral.toStringAsFixed(0)} (±${_pose.margenLateral.toStringAsFixed(0)})   '
                 'adelante: falta ${_errorAdelante.toStringAsFixed(0)}'
-                '${_pose.margenAdelante == null ? ' (no cuenta)' : ' (±${_pose.margenAdelante!.toStringAsFixed(0)})'}',
+                '${_pose.usaRango ? ' (zona ${_pose.adelanteDesde?.toStringAsFixed(0) ?? '−∞'}…${_pose.adelanteHasta?.toStringAsFixed(0) ?? '∞'})' : _pose.margenAdelante == null ? ' (no cuenta)' : ' (±${_pose.margenAdelante!.toStringAsFixed(0)})'}',
                 style: const TextStyle(fontSize: 11, color: Colores.textoSecundario),
               ),
             ),
@@ -939,10 +1013,10 @@ class _EjecucionScreenState extends State<EjecucionScreen>
 
   Widget _avance() {
     final enPartida = _fase == _Fase.partida;
-    final valor = enPartida ? _progresoPartida : _progreso / _p.segundosMantener;
+    final valor = enPartida ? _progresoPartida : _progreso / _segundosPose;
     final texto = enPartida
         ? 'Quédate quieto un momentito…'
-        : '${_progreso.floor()} de ${_p.segundosMantener.round()} segundos';
+        : '${_progreso.floor()} de ${_segundosPose.round()} segundos';
     return Column(
       children: [
         ClipRRect(
@@ -966,7 +1040,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     final todoCompletado = _registro.completado;
     final titulo = todoCompletado ? '¡Muy bien hecho!' : '¡Buen intento!';
     final subtitulo = todoCompletado
-        ? 'Terminaste «Imita a Quique».'
+        ? 'Terminaste «${widget.juego.nombre}».'
         : 'La próxima lo logramos juntos.';
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
