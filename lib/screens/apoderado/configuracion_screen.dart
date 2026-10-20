@@ -2,12 +2,14 @@
 // configuracion_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v9 — paso F4
+// Versión: v10 — paso F9.2
 //
-// CAMBIOS v9 respecto a la v8:
-//  - Nueva herramienta "Datos de prueba: uso de la app": el registro de
-//    uso del participante activo (mundos, puerta parental, Historial y
-//    cómo se navegó la línea de tiempo).
+// CAMBIOS v10 respecto a la v9:
+//  - Testeo → QUIZ: dos botones, "Antes de jugar" y "Después de jugar",
+//    con ✓ cuando el participante activo ya lo completó (si se toca uno
+//    hecho, pregunta antes de repetirlo). Abre la pantalla del quiz en
+//    el mundo del niño.
+//  - Nueva herramienta "Datos de prueba: quiz".
 //
 // Sección "Testeo": participante activo (crear, elegir, exportar).
 //
@@ -23,8 +25,10 @@ import 'package:flutter/material.dart';
 
 import '../../modelos/parametros_juego.dart';
 import '../../modelos/participante.dart';
+import '../../modelos/quiz.dart';
 import '../../servicios/servicio_parametros.dart';
 import '../../servicios/servicio_participantes.dart';
+import '../../servicios/servicio_quiz.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 import '../postura_screen.dart';
@@ -36,6 +40,8 @@ import 'observacion_screen.dart';
 import 'uso_datos_screen.dart';
 import 'parametros_screen.dart';
 import 'participantes_screen.dart';
+import 'quiz_datos_screen.dart';
+import '../nino/quiz_screen.dart';
 import 'registro_juegos_screen.dart';
 
 class ConfiguracionScreen extends StatelessWidget {
@@ -99,6 +105,13 @@ class ConfiguracionScreen extends StatelessWidget {
                 destino: const ObservacionScreen(),
               ),
               const SizedBox(height: 10),
+              // Quiz antes y después de jugar (F9.2).
+              ListenableBuilder(
+                listenable: Listenable.merge(
+                    [ServicioParticipantes.instancia.activo, ServicioQuiz.instancia.sesiones]),
+                builder: (context, _) => _quiz(context),
+              ),
+              const SizedBox(height: 10),
               // Cinturón: asignación y cola.
               ValueListenableBuilder<String>(
                 valueListenable: ServicioCinturon.instancia.estado,
@@ -158,6 +171,14 @@ class ConfiguracionScreen extends StatelessWidget {
               const SizedBox(height: 10),
               _opcion(
                 context,
+                icono: Icons.quiz_rounded,
+                titulo: 'Datos de prueba: quiz',
+                subtitulo: 'Respuestas antes y después de jugar',
+                destino: const QuizDatosScreen(),
+              ),
+              const SizedBox(height: 10),
+              _opcion(
+                context,
                 icono: Icons.touch_app_rounded,
                 titulo: 'Datos de prueba: uso de la app',
                 subtitulo: 'Mundos, puerta parental, Historial y línea de tiempo',
@@ -176,6 +197,84 @@ class ConfiguracionScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// F9.2: tarjeta del quiz con sus dos botones.
+  Widget _quiz(BuildContext context) {
+    final activo = ServicioParticipantes.instancia.activo.value;
+    Widget boton(MomentoQuiz m) {
+      final hecho = activo != null && ServicioQuiz.instancia.hecho(activo.codigo, m);
+      return Expanded(
+        child: OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(64, 48),
+            foregroundColor: Colores.azul,
+            side: BorderSide(color: hecho ? Colores.comodo : Colores.neutro, width: hecho ? 2 : 1),
+          ),
+          icon: Icon(hecho ? Icons.check_circle_rounded : Icons.play_arrow_rounded,
+              color: hecho ? Colores.comodo : Colores.azul),
+          label: Text(m.titulo, textAlign: TextAlign.center),
+          onPressed: activo == null ? null : () => _abrirQuiz(context, m, hecho),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
+      decoration: BoxDecoration(color: Colores.tarjeta, borderRadius: BorderRadius.circular(18)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.quiz_rounded, color: Colores.azul),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Quiz', style: Textos.cuerpoDestacado),
+                    Text(
+                      activo == null
+                          ? 'Primero elige un participante'
+                          : '${activo.codigo}: léelo en voz alta; el niño responde tocando',
+                      style: Textos.secundario,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              boton(MomentoQuiz.antes),
+              const SizedBox(width: 10),
+              boton(MomentoQuiz.despues),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _abrirQuiz(BuildContext context, MomentoQuiz m, bool hecho) async {
+    if (hecho) {
+      final repetir = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('¿Repetir el quiz "${m.titulo}"?'),
+          content: const Text('Ya está hecho. Se guarda uno nuevo y Datos de prueba muestra el último; '
+              'el anterior queda en la exportación.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
+            FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Repetir')),
+          ],
+        ),
+      );
+      if (repetir != true || !context.mounted) return;
+    }
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => QuizScreen(momento: m)));
   }
 
   Widget _opcion(

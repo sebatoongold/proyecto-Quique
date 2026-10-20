@@ -2,11 +2,10 @@
 // main.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v8 — paso F4
+// Versión: v9 — paso F9.2
 //
-// CAMBIOS v8 respecto a la v7:
-//  - Inicia el registro de uso de la app (modo desarrollador) y anota
-//    que se abrió la app.
+// CAMBIOS v9 respecto a la v8:
+//  - Carga los quiz guardados al abrir la app (ServicioQuiz).
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -17,6 +16,7 @@ import 'servicios/servicio_cinturon.dart';
 import 'servicios/servicio_monitoreo.dart';
 import 'servicios/servicio_parametros.dart';
 import 'servicios/servicio_participantes.dart';
+import 'servicios/servicio_quiz.dart';
 import 'tema/tema_app.dart';
 
 Future<void> main() async {
@@ -27,6 +27,7 @@ Future<void> main() async {
   await ServicioMonitoreo.instancia.iniciar();
   await ServicioCinturon.instancia.iniciar();
   await RegistroUso.iniciar();
+  await ServicioQuiz.instancia.iniciar();
   RegistroUso.anotar('app_abierta');
   runApp(const MyApp());
 }

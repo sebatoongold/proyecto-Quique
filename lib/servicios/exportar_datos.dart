@@ -2,15 +2,13 @@
 // exportar_datos.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v7 — paso F4
+// Versión: v8 — paso F9.2
 //
-// CAMBIOS v7 respecto a la v6:
-//  - Cada juego exportado incluye sus 'eventos' y el 'recorrido' de cada
-//    pose (vienen en el registro del juego), y además 'analisisPoses':
-//    el análisis de cada recorrido con los umbrales vigentes.
-//  - Se exporta el registro de uso de la app de cada participante
-//    ('usoApp').
-//  - Formato 'quique-testeo-v7'.
+// CAMBIOS v8 respecto a la v7:
+//  - Se exportan los QUIZ de cada participante ('quiz'): momento,
+//    respuestas, lectura de cada una, orden de las tarjetas, tiempos y
+//    cambios de opción (ver modelos/quiz.dart).
+//  - Formato 'quique-testeo-v8'.
 //
 // Arma un texto JSON con los datos de un participante (o de todos) y
 // lo copia al PORTAPAPELES. Desde ahí se pega donde convenga: un correo
@@ -40,12 +38,13 @@ import 'servicio_parametros.dart';
 import 'servicio_cinturon.dart';
 import 'servicio_monitoreo.dart';
 import 'servicio_participantes.dart';
+import 'servicio_quiz.dart';
 
 // ---------- PARÁMETROS AJUSTABLES ----------
 // Identifica la versión del formato exportado. Si en un paso futuro se
 // agregan datos (eventos, recorrido…), se sube el número para saber
 // qué contiene cada exportación.
-const String formatoExportacion = 'quique-testeo-v7';
+const String formatoExportacion = 'quique-testeo-v8';
 
 class ExportarDatos {
   ExportarDatos._();
@@ -105,6 +104,10 @@ class ExportarDatos {
   static List<Map<String, dynamic>> _uso(String? codigo) =>
       RegistroUso.de(codigo).map((e) => e.toJson()).toList();
 
+  /// Quiz de un participante (completos e incompletos).
+  static List<Map<String, dynamic>> _quiz(String? codigo) =>
+      ServicioQuiz.instancia.de(codigo).map((s) => s.toJson()).toList();
+
   /// Episodios del cinturón de un participante.
   static List<Map<String, dynamic>> _episodiosCinturon(String? codigo) =>
       ServicioCinturon.instancia.de(codigo).map((e) => e.toJson()).toList();
@@ -120,6 +123,7 @@ class ExportarDatos {
       'monitoreo': _sesiones(p.codigo, juegos, conLecturas: true),
       'episodiosCinturon': _episodiosCinturon(p.codigo),
       'usoApp': _uso(p.codigo),
+      'quiz': _quiz(p.codigo),
     };
     return const JsonEncoder.withIndent('  ').convert(datos);
   }
@@ -136,6 +140,7 @@ class ExportarDatos {
         'monitoreo': _sesiones(p.codigo, juegos, conLecturas: false),
         'episodiosCinturon': _episodiosCinturon(p.codigo),
         'usoApp': _uso(p.codigo),
+        'quiz': _quiz(p.codigo),
       });
     }
     final sinParticipante = await AlmacenamientoJuegos.cargarDe(null);
