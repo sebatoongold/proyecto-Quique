@@ -133,58 +133,10 @@ La app **no usa más dependencias**: la figura animada, los íconos de los anima
 
 ---
 
-## Instalación
-
-### 1. Firmware del cinturón
-
-1. Instalar **Arduino IDE**.
-2. En *Archivo → Preferencias → URLs adicionales de gestor de placas*, agregar:
-   `https://espressif.github.io/arduino-esp32/package_esp32_index.json`
-3. En *Herramientas → Placa → Gestor de placas*, instalar **esp32 by Espressif Systems**.
-4. En el *Gestor de bibliotecas*, instalar **Adafruit MPU6050**. Acepta instalar también sus dependencias: Adafruit Unified Sensor y Adafruit BusIO.
-5. Abrir `firmware/emisor_sensor/emisor_sensor.ino`.
-6. Elegir la placa **ESP32 Dev Module** (o *DOIT ESP32 DEVKIT V1*).
-7. **Configuración de memoria (obligatoria):** en *Herramientas → Partition Scheme* elegir **«Huge APP (3MB No OTA/1MB SPIFFS)»**. Con el esquema por defecto el programa (Bluetooth + ESP-NOW + WiFi) ocupa más del 80 % y puede no caber. Este esquema da 3 MB al programa a cambio de no permitir actualizaciones por el aire (OTA), que el proyecto no usa.
-8. Escribir la **dirección MAC del ESP32 de Quique** en `macReceptor[]` (ver el paso 2).
-9. Subir el programa y abrir el **Monitor Serial a 115200 baudios** para ver los valores. Los comandos (`CAL`, `RESET`, `UMBRAL`) también se pueden escribir ahí para probar.
-
-Los umbrales, la duración mínima de un episodio y el tamaño de la cola están juntos al inicio del archivo, con instrucciones para calibrarlos.
-
-### 2. Firmware de Quique
-
-1. Mismos pasos 1–3 y 6 del cinturón.
-2. Para conocer su dirección MAC, subir un programa que imprima `WiFi.macAddress()` y copiarla en el firmware del cinturón.
-3. Abrir `firmware/receptor_quique/receptor_quique.ino` y subirlo.
-4. Conectar los servos con su fuente separada y la tierra común (ver *Conexiones de Quique*).
-
-### 3. App
-
-1. Instalar **Flutter 3.47.2** y el **Android SDK** (a través de Android Studio).
-2. Clonar el repositorio:
-   ```bash
-   git clone https://github.com/sebatoongold/proyecto-Quique.git
-   cd proyecto-Quique
-   flutter pub get
-   ```
-3. Activar la **depuración USB** en el teléfono Android (Opciones de desarrollador) y conectarlo.
-4. Ejecutar:
-   ```bash
-   flutter run
-   ```
-5. Al abrir la app, aceptar los permisos de Bluetooth (y ubicación, si Android los pide). La app busca `ESP32_Sensor_Postura` y se conecta sola, reintentando cada 3 s.
-
-> En Windows, mantener el proyecto **fuera de OneDrive** (por ejemplo `C:\dev\…`). Las advertencias de Java que aparecen al compilar (`A restricted method in java.lang.System…`) son inofensivas.
-
-### Datos de prueba
-
-En la app: **Configuración** (engranaje del mundo apoderado). Ahí se crean participantes, se calibra, se ajustan los parámetros del juego sin recompilar y se exportan los datos de cada participante como JSON al portapapeles.
-
----
-
 ## Autor
 
-**Sebastián Sáez** — Diseño, Universidad Diego Portales, 2026.
-Profesor guía: Sergio Majluf.
-Profesor adjunto: Simón Gallardo.
+**Sebastián Sáez** — Diseño, Universidad Diego Portales, 2026.  
+Profesor guía: Sergio Majluf.  
+Profesor adjunto: Simón Gallardo.  
 
 Proyecto académico. [Licencia: por definir, p. ej. «Todos los derechos reservados» o MIT].
