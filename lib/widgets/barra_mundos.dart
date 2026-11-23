@@ -2,17 +2,14 @@
 // barra_mundos.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Sóma
-// Versión: v4 — paso G2b
+// Versión: v5 — paso G4
 //
-// CAMBIOS v4 respecto a la v3:
-//  - Esquinas más grandes (`radioEsquinaMundos` 96 → 116) y el ícono y
-//    la etiqueta se achican solos si no caben (FittedBox): se corrige el
-//    "Bottom overflowed by 10.0" de la esquina derecha.
-//  - El RELOJ ahora es el CONTORNO: al mantener presionada la esquina
-//    del apoderado, se llena el borde curvo (un arco grueso,
-//    `grosorReloj`) desde abajo hasta el lado, como una aguja; el
-//    interior ya no se rellena. Un arco tenue muestra el recorrido que
-//    falta. Al completarse los 3 s, entra al mundo apoderado.
+// CAMBIOS v5 respecto a la v4:
+//  - PUERTA PARENTAL: si el dedo se mueve un poco, el reloj ya no se
+//    detiene. Antes se usaba un "toque" (que se cancela al mover el
+//    dedo); ahora se sigue al dedo directamente (Listener): el tiempo
+//    sigue sumando mientras el dedo esté DENTRO del cuarto de círculo, y
+//    solo se detiene al levantarlo o al salir de la esquina.
 //
 // La barra de mundos son DOS ESQUINAS (cuartos de círculo) encima de
 // las pantallas: a la izquierda el mundo niño y a la derecha el mundo
@@ -63,6 +60,7 @@ class _BarraMundosState extends State<BarraMundos> with SingleTickerProviderStat
     duration: duracionPuertaParental,
   )..addStatusListener((estado) {
       if (estado == AnimationStatus.completed) {
+        _presionando = false;
         RegistroUso.anotar('puerta_intento', dato: 'ok');
         _puerta.reset();
         widget.alCambiar(Mundo.apoderado);
@@ -73,6 +71,14 @@ class _BarraMundosState extends State<BarraMundos> with SingleTickerProviderStat
   void dispose() {
     _puerta.dispose();
     super.dispose();
+  }
+
+  bool _presionando = false; // G4: hay un dedo sobre la puerta
+
+  void _levantar() {
+    if (!_presionando) return;
+    _presionando = false;
+    _soltar();
   }
 
   void _soltar() {
@@ -171,11 +177,23 @@ class _BarraMundosState extends State<BarraMundos> with SingleTickerProviderStat
   /// Esquina del apoderado vista desde el mundo niño: hay que mantenerla
   /// presionada; se llena como un reloj.
   Widget _puertaParental(double abajo) {
-    return GestureDetector(
+    final lado = radioEsquinaMundos + abajo; // la esquina es un cuadrado de este lado
+    return Listener(
       behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _puerta.forward(),
-      onTapUp: (_) => _soltar(),
-      onTapCancel: _soltar,
+      onPointerDown: (_) {
+        _presionando = true;
+        _puerta.forward();
+      },
+      // Mientras el dedo siga dentro del cuarto de círculo, el reloj sigue.
+      onPointerMove: (e) {
+        if (!_presionando) return;
+        final dx = lado - e.localPosition.dx; // distancia a la esquina de abajo a la derecha
+        final dy = lado - e.localPosition.dy;
+        final dentro = dx >= 0 && dy >= 0 && dx * dx + dy * dy <= lado * lado;
+        if (!dentro) _levantar();
+      },
+      onPointerUp: (_) => _levantar(),
+      onPointerCancel: (_) => _levantar(),
       child: AnimatedBuilder(
         animation: _puerta,
         builder: (context, _) {

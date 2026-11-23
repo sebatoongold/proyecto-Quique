@@ -2,11 +2,11 @@
 // inicio_apoderado.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v9 — paso G2b
+// Versión: v10 — paso G4
 //
-// CAMBIOS v9 respecto a la v8:
-//  - Actividad sugerida: título de 21 → 19 y título y descripción sin
-//    "viudas" (la última línea nunca queda con una sola palabra).
+// CAMBIOS v10 respecto a la v9:
+//  - La actividad sugerida entrega SU JUEGO al tocarla
+//    (`alIrAlMundoNino(juego)`): la app pasa al mundo niño y lo abre.
 //
 // Inicio del apoderado: encabezado, avisos (solo si hay problema),
 // alertas de hoy, actividad sugerida e Historial.
@@ -38,7 +38,7 @@ const Juego juegoSugerido = juegoImitaAQuique;
 const double inclinacionIconoActividad = 22;
 
 class InicioApoderado extends StatelessWidget {
-  final VoidCallback alIrAlMundoNino;
+  final ValueChanged<Juego> alIrAlMundoNino; // G4: con el juego sugerido
 
   const InicioApoderado({super.key, required this.alIrAlMundoNino});
 
@@ -159,7 +159,7 @@ class InicioApoderado extends StatelessWidget {
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
-        onTap: alIrAlMundoNino,
+        onTap: () => alIrAlMundoNino(juego),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
           child: Row(

@@ -2,18 +2,16 @@
 // inicio_nino.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Sóma
-// Versión: v8 — paso G3 (historia y experiencia)
+// Versión: v9 — paso G4
 //
-// CAMBIOS v8 respecto a la v7:
-//  - Es el INICIO DEL NIÑO con historia (lamina_mundo_nino_v1):
-//      · arriba, Sóma en el escenario del último lugar abierto del viaje,
-//        con un globo que lo invita a seguir, y la barra de experiencia;
-//      · abajo, tres tarjetas: ACTIVIDADES (los dos juegos, ahora en su
-//        propia pantalla), HISTORIA (el viaje) y LOGROS (el álbum).
-//  - Si todavía no vio el prólogo, Sóma se presenta y la tarjeta Historia
-//    dice "¡Empieza aquí!". Si hay un capítulo nuevo sin ver, Sóma lo
-//    anuncia; tocar el escenario lleva a la Historia.
-//  - Cada tarjeta se anota en el registro de uso ('menu_nino').
+// CAMBIOS v9 respecto a la v8:
+//  - ARRIBA queda solo Sóma en su escenario (con su globo).
+//  - ABAJO, en orden: la barra de experiencia; ACTIVIDADES grande y
+//    destacada (`altoTarjetaActividades`, del tamaño de la actividad
+//    sugerida del apoderado), y debajo HISTORIA y LOGROS lado a lado,
+//    en dos columnas (`altoTarjetasPequenas`).
+//  - La parte de abajo tiene alto fijo; el escenario toma el resto.
+//
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -34,9 +32,10 @@ import 'historia_screen.dart';
 import 'logros_screen.dart';
 
 // ---------- PARÁMETROS AJUSTABLES ----------
-// Parte de la pantalla que ocupa el escenario de Sóma (el resto, las tarjetas).
-const int flexEscenarioInicio = 5;
-const int flexTarjetasInicio = 5;
+// Alto de la tarjeta Actividades (la principal).
+const double altoTarjetaActividades = 104;
+// Alto de las tarjetas Historia y Logros (lado a lado).
+const double altoTarjetasPequenas = 92;
 
 class InicioNino extends StatelessWidget {
   const InicioNino({super.key});
@@ -89,9 +88,8 @@ class InicioNino extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // --- Arriba: Sóma en su escenario ---
+              // --- Arriba: solo Sóma en su escenario ---
               Expanded(
-                flex: flexEscenarioInicio,
                 child: GestureDetector(
                   onTap: () => _abrir(context, 'historia', const HistoriaScreen()),
                   child: Stack(
@@ -102,67 +100,113 @@ class InicioNino extends StatelessWidget {
                         bottom: false,
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _globo(frase),
-                              const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-                                decoration: BoxDecoration(
-                                  color: Colores.tarjeta.withValues(alpha: 0.92),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: const BarraExperiencia(),
-                              ),
-                            ],
-                          ),
+                          child: Align(alignment: Alignment.topLeft, child: _globo(frase)),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              // --- Abajo: las tres tarjetas ---
+              // --- Abajo: experiencia, Actividades y, debajo, Historia | Logros ---
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, espacioBajoEsquinas + 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const BarraExperiencia(),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: altoTarjetaActividades,
+                      child: _tarjeta(
+                        context,
+                        titulo: 'Actividades',
+                        subtitulo: 'Ayuda a Sóma con las posturas',
+                        icono: Icons.accessibility_new_rounded,
+                        principal: true,
+                        alTocar: () => _abrir(context, 'actividades', const ActividadesScreen()),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: altoTarjetasPequenas,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: _tarjetaPequena(
+                              titulo: 'Historia',
+                              subtitulo: vioPrologo ? 'El viaje' : '¡Empieza aquí!',
+                              icono: Icons.route_rounded,
+                              destacada: !vioPrologo || nuevo != null,
+                              alTocar: () => _abrir(context, 'historia', const HistoriaScreen()),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _tarjetaPequena(
+                              titulo: 'Logros',
+                              subtitulo: 'Tu álbum',
+                              icono: Icons.photo_album_rounded,
+                              alTocar: () => _abrir(context, 'logros', const LogrosScreen()),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// G4: tarjeta de media columna (Historia, Logros): ícono arriba, título
+  /// y una palabra debajo.
+  static Widget _tarjetaPequena({
+    required String titulo,
+    required String subtitulo,
+    required IconData icono,
+    required VoidCallback alTocar,
+    bool destacada = false,
+  }) {
+    return Material(
+      color: Colores.tarjeta,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: alTocar,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: destacada ? Colores.ambar : Colores.linea, width: destacada ? 2.5 : 1.5),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colores.fondo,
+                child: Icon(icono, color: Colores.azul, size: 22),
+              ),
+              const SizedBox(width: 10),
               Expanded(
-                flex: flexTarjetasInicio,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, espacioBajoEsquinas - 8),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: _tarjeta(
-                          context,
-                          titulo: 'Actividades',
-                          subtitulo: 'Ayuda a Sóma con las posturas',
-                          icono: Icons.accessibility_new_rounded,
-                          principal: true,
-                          alTocar: () => _abrir(context, 'actividades', const ActividadesScreen()),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: _tarjeta(
-                          context,
-                          titulo: 'Historia',
-                          subtitulo: vioPrologo ? 'El viaje de Sóma por Chile' : '¡Empieza aquí!',
-                          icono: Icons.route_rounded,
-                          destacada: !vioPrologo || nuevo != null,
-                          alTocar: () => _abrir(context, 'historia', const HistoriaScreen()),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: _tarjeta(
-                          context,
-                          titulo: 'Logros',
-                          subtitulo: 'Tu álbum de explorador',
-                          icono: Icons.photo_album_rounded,
-                          alTocar: () => _abrir(context, 'logros', const LogrosScreen()),
-                        ),
-                      ),
-                    ],
-                  ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(titulo,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontFamily: fuenteTitulos, fontSize: 17, fontWeight: FontWeight.w700, color: Colores.azul)),
+                    Text(subtitulo,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12, color: Colores.textoSecundario)),
+                  ],
                 ),
               ),
             ],
@@ -220,9 +264,9 @@ class InicioNino extends StatelessWidget {
           child: Row(
             children: [
               CircleAvatar(
-                radius: 22,
+                radius: principal ? 30 : 22,
                 backgroundColor: principal ? Colores.tarjeta : Colores.fondo,
-                child: Icon(icono, color: principal ? Colores.bosque : Colores.azul),
+                child: Icon(icono, color: principal ? Colores.bosque : Colores.azul, size: principal ? 32 : 24),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -232,7 +276,10 @@ class InicioNino extends StatelessWidget {
                   children: [
                     Text(titulo,
                         style: TextStyle(
-                            fontFamily: fuenteTitulos, fontSize: 18, fontWeight: FontWeight.w700, color: texto)),
+                            fontFamily: fuenteTitulos,
+                            fontSize: principal ? 21 : 18,
+                            fontWeight: FontWeight.w700,
+                            color: texto)),
                     Text(subtitulo,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
