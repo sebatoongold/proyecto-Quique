@@ -87,7 +87,7 @@ class _PosturaScreenState extends State<PosturaScreen> {
                       Text(
                         ble.ultimoError!,
                         textAlign: TextAlign.center,
-                        style: Textos.secundario.copyWith(fontSize: 12),
+                        style: Textos.nota,
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -150,7 +150,7 @@ class _PosturaScreenState extends State<PosturaScreen> {
       child: Row(
         children: [
           Expanded(child: Text(titulo, style: Textos.secundario)),
-          Text(valor, style: Textos.cuerpoDestacado.copyWith(fontSize: 18)),
+          Text(valor, style: Textos.subtitulo),
         ],
       ),
     );

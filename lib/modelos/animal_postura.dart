@@ -2,7 +2,12 @@
 // animal_postura.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso F9.1 (tarjetas de postura)
+// Versión: v2 — paso G3
+//
+// CAMBIOS v2 respecto a la v1:
+//  - La bolita se llama QUIRQUINCHO (el armadillo del altiplano, como en
+//    la historia). Su `id` sigue siendo 'armadillo', para que los datos
+//    anteriores (juegos y quiz) sigan siendo comparables.
 //
 // Cada postura de los juegos tiene un ANIMAL: nombre, ícono y color
 // propio. La figura, el ícono y el nombre aparecen siempre juntos
@@ -12,7 +17,7 @@
 //
 //   jirafa     espalda estirada, bien alto (los dos juegos)
 //   tortuga    a medio camino («De lo alto a lo bajo»)
-//   armadillo  bolita: abraza tus rodillas («De lo alto a lo bajo»)
+//   armadillo  QUIRQUINCHO: bolita, abraza tus rodillas
 //   pinguino   inclinarse hacia un lado («Imita a Quique»)
 //
 // El `id` es lo que queda en los registros y en la exportación (sin
@@ -46,7 +51,7 @@ enum AnimalPostura {
   ),
   armadillo(
     id: 'armadillo',
-    nombre: 'Armadillo',
+    nombre: 'Quirquincho',
     articulo: 'un',
     articuloDefinido: 'el',
     bueno: 'buen',

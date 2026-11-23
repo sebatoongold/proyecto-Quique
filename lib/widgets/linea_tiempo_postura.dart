@@ -282,7 +282,7 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
               decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
             ),
             const SizedBox(width: 8),
-            Expanded(child: Text(texto, style: Textos.cuerpo.copyWith(fontSize: 15))),
+            Expanded(child: Text(texto, style: Textos.cuerpo)),
           ],
         ),
       );
@@ -378,7 +378,7 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
               width: 50,
               child: Text(
                 '${_dos(hora)}:00',
-                style: (enFoco ? Textos.cuerpoDestacado : Textos.secundario).copyWith(fontSize: 15),
+                style: enFoco ? Textos.cuerpoDestacado : Textos.cuerpo.copyWith(color: Colores.textoSecundario),
               ),
             ),
             Expanded(
@@ -474,7 +474,7 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(_diasCortos[d.weekday - 1], style: Textos.secundario.copyWith(fontSize: 12)),
+          Text(_diasCortos[d.weekday - 1], style: Textos.nota),
           const SizedBox(height: 2),
           Container(
             width: 30,

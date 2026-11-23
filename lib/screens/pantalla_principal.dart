@@ -2,11 +2,12 @@
 // pantalla_principal.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso F4
+// Versión: v3 — paso G2
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Anota en el registro de uso cada cambio de mundo, y si se pasó al
-//    mundo del niño desde la actividad sugerida del apoderado.
+// CAMBIOS v3 respecto a la v2:
+//  - La barra de mundos ya no va abajo como franja: sus dos esquinas se
+//    dibujan ENCIMA de las pantallas (Stack), pegadas a las esquinas de
+//    abajo (ver widgets/barra_mundos.dart).
 //
 // Contiene los dos mundos y la barra inferior para cambiar entre ellos.
 // DECISIONES:
@@ -49,18 +50,26 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _mundo == Mundo.apoderado ? 0 : 1,
+      body: Stack(
         children: [
-          // Cruce entre mundos: la actividad sugerida pasa al mundo niño
-          // directamente (va del adulto al niño, no necesita puerta).
-          InicioApoderado(
-            alIrAlMundoNino: () => _cambiar(Mundo.nino, motivo: 'nino_por_actividad_sugerida'),
+          IndexedStack(
+            index: _mundo == Mundo.apoderado ? 0 : 1,
+            children: [
+              // Cruce entre mundos: la actividad sugerida pasa al mundo niño
+              // directamente (va del adulto al niño, no necesita puerta).
+              InicioApoderado(
+                alIrAlMundoNino: () => _cambiar(Mundo.nino, motivo: 'nino_por_actividad_sugerida'),
+              ),
+              const InicioNino(),
+            ],
           ),
-          const InicioNino(),
+          // Las dos esquinas de la barra de mundos, encima de todo. Solo
+          // reciben toques en las esquinas; el resto pasa a la pantalla.
+          Positioned.fill(
+            child: BarraMundos(actual: _mundo, alCambiar: (m) => _cambiar(m)),
+          ),
         ],
       ),
-      bottomNavigationBar: BarraMundos(actual: _mundo, alCambiar: (m) => _cambiar(m)),
     );
   }
 }

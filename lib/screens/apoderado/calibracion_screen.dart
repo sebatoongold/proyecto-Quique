@@ -365,7 +365,7 @@ class _CalibracionScreenState extends State<CalibracionScreen> {
         style: Textos.secundario,
       ),
       if (d != null)
-        Text('ahora: adelante ${d.adelante} · lado ${d.lateral}',
+        Text('Ahora: adelante ${d.adelante} · lado ${d.lateral}',
             textAlign: TextAlign.center, style: Textos.secundario),
       if (_aviso.isNotEmpty) ...[
         const SizedBox(height: 16),

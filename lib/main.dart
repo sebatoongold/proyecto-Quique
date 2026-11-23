@@ -2,10 +2,11 @@
 // main.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v9 — paso F9.2
+// Versión: v10 — paso G3
 //
-// CAMBIOS v9 respecto a la v8:
-//  - Carga los quiz guardados al abrir la app (ServicioQuiz).
+// CAMBIOS v10 respecto a la v9:
+//  - Carga el progreso de explorador al abrir la app (ServicioProgreso).
+//  - Título de la app: Sóma.
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -16,6 +17,7 @@ import 'servicios/servicio_cinturon.dart';
 import 'servicios/servicio_monitoreo.dart';
 import 'servicios/servicio_parametros.dart';
 import 'servicios/servicio_participantes.dart';
+import 'servicios/servicio_progreso.dart';
 import 'servicios/servicio_quiz.dart';
 import 'tema/tema_app.dart';
 
@@ -28,6 +30,7 @@ Future<void> main() async {
   await ServicioCinturon.instancia.iniciar();
   await RegistroUso.iniciar();
   await ServicioQuiz.instancia.iniciar();
+  await ServicioProgreso.instancia.iniciar();
   RegistroUso.anotar('app_abierta');
   runApp(const MyApp());
 }
@@ -39,7 +42,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Quique',
+      title: 'Sóma',
       theme: TemaApp.claro,
       home: const PantallaPrincipal(),
     );

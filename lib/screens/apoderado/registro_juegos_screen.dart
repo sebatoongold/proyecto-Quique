@@ -219,9 +219,8 @@ class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
       const SizedBox(height: 6),
       GraficoRecorrido(pose: p, ejeLateral: a.ejePrincipal == 'lateral', pistasMs: pistas),
       Text(
-        'Eje ${a.ejePrincipal == 'lateral' ? 'lateral' : 'adelante/atrás'} · verde: zona de la pose · '
-        'ámbar: pista',
-        style: Textos.secundario.copyWith(fontSize: 11),
+        'Eje ${a.ejePrincipal == 'lateral' ? 'lateral' : 'adelante/atrás'}. Verde: zona de la pose. Ámbar: pista.',
+        style: Textos.nota,
       ),
     ];
   }
@@ -243,7 +242,7 @@ class _RegistroJuegosScreenState extends State<RegistroJuegosScreen> {
                       '${_horaExacta(r.inicio.add(Duration(milliseconds: e.ms)))}  '
                       '${e.tipo}${e.pose == null ? '' : ' · pose ${e.pose! + 1}'}'
                       '${e.dato == null ? '' : ' · ${e.dato}'}',
-                      style: Textos.cuerpo.copyWith(fontSize: 14),
+                      style: Textos.secundario.copyWith(color: Colores.azul),
                     ),
                   ),
               ],

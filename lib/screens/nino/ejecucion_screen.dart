@@ -2,12 +2,19 @@
 // ejecucion_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v11 — paso F9.1b
+// Versión: v13 — paso G3 (historia y experiencia)
 //
-// CAMBIOS v11 respecto a la v10:
-//  - El ícono del PINGÜINO se refleja según el lado de la pose: se
-//    inclina hacia el mismo lado que la figura en pantalla (con o sin
-//    modo espejo). Ver _espejarIcono().
+// CAMBIOS v13 respecto a la v12:
+//  - EXPERIENCIA: al terminar una actividad (llegar al cierre) se
+//    registra en el progreso de explorador (servicio_progreso.dart). El
+//    cierre muestra "+N XP de explorador" y, si corresponde, la FOTO
+//    nueva, los CAPÍTULOS que se abrieron y las INSIGNIAS ganadas.
+//  - `fotoDe`: si el juego se abrió desde un capítulo ("Ayudar a
+//    Sóma"), el animal cuya foto se gana al lograr su postura.
+//  - La "racha" de días seguidos se reemplaza por los DÍAS EXPLORANDO
+//    ESTA SEMANA (sin castigo: no se rompe si un día no juega).
+//  - Los botones "Volver al río" dicen "Volver con Sóma" (cierre, ayuda
+//    y pantalla sin cinturón).
 //
 // Flujo completo: flujo_nino_actividad_guiada_v1.svg. Sigue pendiente:
 // el botón "Escuchar" (requiere una dependencia de voz) y las
@@ -26,7 +33,9 @@ import '../../modelos/juego.dart';
 import '../../modelos/parametros_juego.dart';
 import '../../modelos/pose.dart';
 import '../../modelos/registro_juego.dart';
+import '../../modelos/historia.dart';
 import '../../servicios/almacenamiento_juegos.dart';
+import '../../servicios/servicio_progreso.dart';
 import '../../servicios/servicio_parametros.dart';
 import '../../servicios/servicio_participantes.dart';
 import '../../servicios/servicio_ble.dart';
@@ -108,8 +117,10 @@ class EjecucionScreen extends StatefulWidget {
   final Juego juego;
   // Poses fijas (pruebas); null = las del juego con los números del panel.
   final List<Pose>? poses;
+  // G3: animal cuya foto se gana (si se abrió desde un capítulo).
+  final AnimalPostura? fotoDe;
 
-  const EjecucionScreen({super.key, this.juego = juegoImitaAQuique, this.poses});
+  const EjecucionScreen({super.key, this.juego = juegoImitaAQuique, this.poses, this.fotoDe});
 
   @override
   State<EjecucionScreen> createState() => _EjecucionScreenState();
@@ -168,11 +179,16 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   late RegistroJuego _registro;
   bool _registroGuardado = false;
   bool _algunaSaltada = false;
-  int? _racha; // se muestra en el cierre
+  int? _racha; // G3: días explorando esta semana (se muestra en el cierre)
+  Ganancia? _ganancia; // G3: lo que ganó en esta actividad
 
   Pose get _pose => _poses[_indicePose];
   MetricaPose? get _metricaActual =>
       _registro.poses.isEmpty ? null : _registro.poses.last;
+
+  // G2: el cero ya está decidido (fijo o calibrado) y la primera viñeta
+  // espera a que llegue el primer dato del cinturón.
+  bool _explicacionPendiente = false;
 
   @override
   void initState() {
@@ -199,6 +215,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
 
   /// Decide de dónde sale la postura cero de este juego.
   void _aplicarCero() {
+    _explicacionPendiente = false; // G2: se vuelve a decidir abajo
     final cal = ServicioParticipantes.instancia.activo.value?.calibracion;
     // Juego frontal: su propio tipo de cero (Parámetros → Juego frontal).
     if (widget.juego.esFrontal) {
@@ -211,7 +228,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           ..ceroLateral = 0
           ..tipoCero = 'fijo';
         _registro.evento('cero', dato: 'fijo');
-        _mostrarExplicacion(0); // sin fase de partida
+        _esperarCinturon(); // sin fase de partida, pero sí con cinturón
         return;
       }
       if (tipo == 'calibrado' && cal != null) {
@@ -222,7 +239,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           ..ceroLateral = cal.lateral
           ..tipoCero = 'calibrado';
         _registro.evento('cero', dato: 'calibrado');
-        _mostrarExplicacion(0);
+        _esperarCinturon();
         return;
       }
       _registro.tipoCero = tipo == 'calibrado' ? 'automatico_sin_calibracion' : 'automatico';
@@ -237,11 +254,19 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         ..ceroLateral = cal.lateral
         ..tipoCero = 'calibrado';
       _registro.evento('cero', dato: 'calibrado');
-      _mostrarExplicacion(0); // sin fase de partida
+      _esperarCinturon(); // sin fase de partida, pero sí con cinturón
     } else {
       _registro.tipoCero = _p.ceroCalibrado ? 'automatico_sin_calibracion' : 'automatico';
       _fase = _Fase.partida;
     }
+  }
+
+  /// G2: sin fase de partida, la primera viñeta igual espera al
+  /// cinturón. Mientras, se ve la pantalla de partida ("¡Necesito tu
+  /// cinturón para jugar!"), como en el otro juego.
+  void _esperarCinturon() {
+    _explicacionPendiente = true;
+    _fase = _Fase.partida;
   }
 
   bool get _costado => widget.juego.vista == VistaFigura.costado;
@@ -302,10 +327,16 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     }
 
     // Sin conexión o en pausa, el juego no avanza (el avance queda guardado).
+    // G2: llegó el cinturón y el cero ya estaba decidido → primera viñeta.
+    if (_explicacionPendiente && d != null && ble.conectado && !_pausado) {
+      _explicacionPendiente = false;
+      _mostrarExplicacion(0);
+    }
+
     if (d != null && ble.conectado && !_pausado) {
       switch (_fase) {
         case _Fase.partida:
-          _revisarPartida(d, ahora);
+          if (!_explicacionPendiente) _revisarPartida(d, ahora);
         case _Fase.pose:
           _revisarPose(dt, ahora);
         case _Fase.logrado:
@@ -516,8 +547,15 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         _registro.poses.length == _poses.length &&
         _registro.poses.every((p) => p.completada);
     _guardarRegistro(interrumpido: false).then((_) async {
-      final r = await AlmacenamientoJuegos.racha();
-      if (mounted) setState(() => _racha = r);
+      // G3: experiencia, foto, capítulos e insignias.
+      final g = await ServicioProgreso.instancia.registrarActividad(_registro, fotoDe: widget.fotoDe);
+      final dias = ServicioProgreso.instancia.actual.diasEstaSemana(DateTime.now());
+      if (mounted) {
+        setState(() {
+          _ganancia = g;
+          _racha = dias;
+        });
+      }
     });
   }
 
@@ -551,6 +589,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       _registroGuardado = false;
       _algunaSaltada = false;
       _racha = null;
+      _ganancia = null;
       _muestras.clear();
       _progresoPartida = 0;
       _indicePose = 0;
@@ -568,7 +607,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('¿Seguimos después?'),
-        content: const Text('Si sales ahora, Quique te espera para la próxima.'),
+        content: const Text('Si sales ahora, Sóma te espera para la próxima.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -616,7 +655,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(_OpcionAyuda.volverAlRio),
-            child: const Text('Volver al río'),
+            child: const Text('Volver con Sóma'),
           ),
         ],
       ),
@@ -874,8 +913,11 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   Widget _instruccion() {
     switch (_fase) {
       case _Fase.partida:
+        if (_explicacionPendiente) {
+          return _tarjetaTexto('¡Prepárate para jugar!', 'Empezamos apenas se conecte tu cinturón.');
+        }
         return _tarjetaTexto('Siéntate derecho y quédate quieto',
-            'Así Quique conoce tu postura cómoda.');
+            'Así Sóma conoce tu postura cómoda.');
       case _Fase.logrado:
         return _tarjetaTexto('¡Lo lograste!',
             _pose.animal.felicitacion + (_indicePose < _poses.length - 1 ? ' Vamos con la siguiente.' : ''));
@@ -1072,7 +1114,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           const SizedBox(height: 4),
           TextButton(
             onPressed: _salirDelJuego,
-            child: const Text('Volver al río',
+            child: const Text('Volver con Sóma',
                 style: TextStyle(color: Colores.textoSecundario, decoration: TextDecoration.underline)),
           ),
         ],
@@ -1168,6 +1210,39 @@ class _EjecucionScreenState extends State<EjecucionScreen>
   }
 
   // ---------- Fase: cierre ----------
+  /// G3: "+N XP", foto nueva, capítulos abiertos e insignias, en el cierre.
+  List<Widget> _lineasGanancia(Ganancia g) {
+    Widget chip(IconData icono, String texto, Color fondo) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(color: fondo, borderRadius: BorderRadius.circular(18)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icono, size: 20, color: Colores.azul),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(texto,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colores.azul)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+    final ambarSuave = Colores.ambar.withValues(alpha: 0.25);
+    return [
+      chip(Icons.star_rounded, '+${g.xp} XP de explorador', ambarSuave),
+      if (g.foto != null) chip(Icons.photo_camera_rounded, '¡Foto nueva: ${g.foto!.nombre}!', ambarSuave),
+      for (final Capitulo c in g.capitulosNuevos)
+        chip(Icons.route_rounded, c.numero == 0 ? '¡El viaje comienza!' : '¡Nuevo capítulo: ${c.lugar.nombre}!',
+            Colores.cielo),
+      for (final i in g.insignias) chip(Icons.military_tech_rounded, 'Insignia: ${i.nombre}', ambarSuave),
+    ];
+  }
+
   Widget _cierre() {
     // Se celebra el esfuerzo, sin comparar con días anteriores.
     final todoCompletado = _registro.completado;
@@ -1176,7 +1251,10 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         ? 'Terminaste «${widget.juego.nombre}».'
         : 'La próxima lo logramos juntos.';
     final animada = _p.celebracionAnimada;
-    final columna = Column(
+    // G3: con desplazamiento, por si las líneas de lo ganado no caben.
+    final columna = Center(
+      child: SingleChildScrollView(
+        child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1194,7 +1272,9 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         const SizedBox(height: 6),
         Text(subtitulo, textAlign: TextAlign.center, style: Textos.cuerpo),
         const SizedBox(height: 16),
-        // Racha sin presión: una hoja y los días.
+        // G3: lo ganado para el viaje.
+        if (_ganancia != null) ..._lineasGanancia(_ganancia!),
+        // Racha sin presión: una hoja y los días de esta semana.
         if (_racha != null && _racha! > 0)
           Center(
             child: Container(
@@ -1209,7 +1289,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                   const Icon(Icons.eco_rounded, color: Colores.bosqueClaro),
                   const SizedBox(width: 6),
                   Text(
-                    _racha == 1 ? '1 día' : '$_racha días',
+                    _racha == 1 ? '1 día explorando esta semana' : '$_racha días explorando esta semana',
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colores.bosque),
                   ),
                 ],
@@ -1219,7 +1299,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         const SizedBox(height: 32),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Volver al río'),
+          child: const Text('Volver con Sóma'),
         ),
         const SizedBox(height: 12),
         OutlinedButton(
@@ -1232,6 +1312,8 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           child: const Text('Otra vez'),
         ),
       ],
+        ),
+      ),
     );
     if (!animada) return columna;
     return Stack(

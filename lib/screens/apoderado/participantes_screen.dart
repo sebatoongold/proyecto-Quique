@@ -2,10 +2,11 @@
 // participantes_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v7 — paso F9.2
+// Versión: v8 — paso G3
 //
-// CAMBIOS v7 respecto a la v6:
-//  - Eliminar un participante borra también sus quiz.
+// CAMBIOS v8 respecto a la v7:
+//  - Eliminar un participante borra también su progreso de explorador
+//    (experiencia, capítulos, fotos, insignias).
 //
 // Herramienta del INVESTIGADOR (se abre desde Configuración):
 //  - Crear un participante (código P01, P02…, nombre opcional, grupo
@@ -28,6 +29,7 @@ import '../../servicios/registro_uso.dart';
 import '../../servicios/servicio_cinturon.dart';
 import '../../servicios/servicio_monitoreo.dart';
 import '../../servicios/servicio_participantes.dart';
+import '../../servicios/servicio_progreso.dart';
 import '../../servicios/servicio_quiz.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
@@ -98,7 +100,7 @@ class _ParticipantesScreenState extends State<ParticipantesScreen> {
       builder: (context) => AlertDialog(
         title: Text('¿Eliminar a ${p.codigo}?'),
         content: Text(
-          'Se borrarán su perfil, sus $n juegos, sus sesiones de monitoreo y sus quiz. '
+          'Se borrarán su perfil, sus $n juegos, sus sesiones de monitoreo, sus quiz y su viaje. '
           'Esto no se puede deshacer. '
           'Si los necesitas, copia sus datos antes.',
         ),
@@ -114,6 +116,7 @@ class _ParticipantesScreenState extends State<ParticipantesScreen> {
     await ServicioCinturon.instancia.borrarDe(p.codigo);
     await RegistroUso.borrarDe(p.codigo);
     await ServicioQuiz.instancia.borrarDe(p.codigo);
+    await ServicioProgreso.instancia.borrarDe(p.codigo);
     await _servicio.eliminar(p);
     await _contarJuegos();
     _aviso('${p.codigo} eliminado');

@@ -173,7 +173,7 @@ class _MonitoreoDatosScreenState extends State<MonitoreoDatosScreen> {
         Text(nombre, style: Textos.cuerpoDestacado),
         Text(
           '${r.veces} veces${r.vecesDelCinturon > 0 ? ' (${r.vecesDelCinturon} del cinturón, en cortes)' : ''} · en mala postura ${_t(r.msMalaPostura)} · la más larga ${_t(r.msMasLargo)}\n'
-          'adelante ${_t(r.msAdelante)} · lateral ${_t(r.msLateral)} · ambos ${_t(r.msAmbos)}',
+          'Adelante ${_t(r.msAdelante)} · lateral ${_t(r.msLateral)} · ambos ${_t(r.msAmbos)}',
           style: Textos.secundario,
         ),
       ],

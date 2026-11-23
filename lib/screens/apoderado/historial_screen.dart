@@ -124,14 +124,14 @@ class _HistorialScreenState extends State<HistorialScreen> {
                 children: [
                   const Text('Esta semana', style: Textos.secundario),
                   const SizedBox(height: 6),
-                  Text(r.mensaje, style: Textos.cuerpoDestacado.copyWith(fontSize: 17, height: 1.3)),
+                  Text(r.mensaje, style: Textos.subtitulo),
                   if (r.lineaBase != null) ...[
                     const SizedBox(height: 20),
                     _GraficoSemana(resumen: r),
                     const SizedBox(height: 10),
                     const Text(
                       'Segundos para lograr una pose · más bajo = le costó menos',
-                      style: TextStyle(fontSize: 12, color: Colores.textoSecundario),
+                      style: Textos.nota,
                     ),
                   ],
                 ],
@@ -241,7 +241,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
           decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
         ),
         const SizedBox(width: 6),
-        Text(texto, style: Textos.cuerpo.copyWith(fontSize: 14)),
+        Text(texto, style: Textos.secundario.copyWith(color: Colores.azul)),
       ],
     );
   }
@@ -328,8 +328,8 @@ class _GraficoSemana extends StatelessWidget {
                 right: 0,
                 bottom: yBase + 4,
                 child: Text(
-                  'primer día: ${base.round()} s',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colores.bosque),
+                  'Primer día: ${base.round()} s',
+                  style: Textos.etiqueta.copyWith(color: Colores.bosque),
                 ),
               ),
             ],
@@ -343,11 +343,7 @@ class _GraficoSemana extends StatelessWidget {
                 child: Text(
                   letras[d.dia.weekday - 1],
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: d.dia == hoy ? FontWeight.w700 : FontWeight.w400,
-                    color: d.dia == hoy ? Colores.azul : Colores.textoSecundario,
-                  ),
+                  style: d.dia == hoy ? Textos.etiqueta : Textos.nota,
                 ),
               ),
           ],

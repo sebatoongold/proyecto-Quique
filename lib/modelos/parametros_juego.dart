@@ -2,18 +2,12 @@
 // parametros_juego.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v8 — paso F8
+// Versión: v9 — paso G3
 //
-// CAMBIOS v8 respecto a la v7:
-//  - Parámetros de PISTA Y CELEBRACIÓN (para alternar variantes entre
-//    participantes y comparar):
-//      pistaAnimada         la pista se muestra con una flecha que late
-//                           sobre la figura grande (no = solo la miniatura)
-//      vibrarPista          el teléfono vibra una vez cuando aparece la
-//                           pista (apagado por defecto)
-//      celebracionAnimada   saltito de la figura + confeti, y cierre con
-//                           las poses (no = la celebración sencilla de antes)
-//      segundosCelebracion  cuánto dura la celebración de cada pose
+// CAMBIOS v9 respecto a la v8:
+//  - Experiencia que pide cada capítulo de la historia (xpCapitulo1…4),
+//    bajos por defecto para que en una sesión única de testeo el niño
+//    alcance a ver 2 o 3 capítulos (ver modelos/historia.dart).
 //
 // Los parámetros del juego que se pueden cambiar DESDE LA APP
 // (Configuración → Parámetros del juego), sin recompilar. Sirven para
@@ -73,6 +67,11 @@ const bool defectoPistaAnimada = true;
 const bool defectoVibrarPista = false;
 const bool defectoCelebracionAnimada = true;
 const double defectoSegundosCelebracion = 2.5;
+// Historia: experiencia que pide cada capítulo (G3).
+const double defectoXpCapitulo1 = 30;
+const double defectoXpCapitulo2 = 80;
+const double defectoXpCapitulo3 = 150;
+const double defectoXpCapitulo4 = 250;
 
 // ---------- RANGOS DE LOS DESLIZADORES DEL PANEL ----------
 // (mínimo, máximo, paso). Cambiarlos aquí cambia el panel.
@@ -93,6 +92,7 @@ const rangoMargenMedio = (min: 2.0, max: 12.0, paso: 1.0);
 const rangoBolitaDesde = (min: 15.0, max: 60.0, paso: 1.0);
 const rangoSegundosBolita = (min: 2.0, max: 15.0, paso: 1.0);
 const rangoSegundosCelebracion = (min: 1.0, max: 5.0, paso: 0.5);
+const rangoXpCapitulo = (min: 0.0, max: 1000.0, paso: 10.0);
 
 class ParametrosJuego {
   final double anguloLateral;
@@ -120,6 +120,10 @@ class ParametrosJuego {
   final bool vibrarPista;
   final bool celebracionAnimada;
   final double segundosCelebracion;
+  final double xpCapitulo1;
+  final double xpCapitulo2;
+  final double xpCapitulo3;
+  final double xpCapitulo4;
 
   const ParametrosJuego({
     this.anguloLateral = defectoAnguloLateral,
@@ -147,6 +151,10 @@ class ParametrosJuego {
     this.vibrarPista = defectoVibrarPista,
     this.celebracionAnimada = defectoCelebracionAnimada,
     this.segundosCelebracion = defectoSegundosCelebracion,
+    this.xpCapitulo1 = defectoXpCapitulo1,
+    this.xpCapitulo2 = defectoXpCapitulo2,
+    this.xpCapitulo3 = defectoXpCapitulo3,
+    this.xpCapitulo4 = defectoXpCapitulo4,
   });
 
   /// true si todo está en los valores por defecto.
@@ -178,6 +186,10 @@ class ParametrosJuego {
     bool? vibrarPista,
     bool? celebracionAnimada,
     double? segundosCelebracion,
+    double? xpCapitulo1,
+    double? xpCapitulo2,
+    double? xpCapitulo3,
+    double? xpCapitulo4,
   }) =>
       ParametrosJuego(
         anguloLateral: anguloLateral ?? this.anguloLateral,
@@ -205,6 +217,10 @@ class ParametrosJuego {
         vibrarPista: vibrarPista ?? this.vibrarPista,
         celebracionAnimada: celebracionAnimada ?? this.celebracionAnimada,
         segundosCelebracion: segundosCelebracion ?? this.segundosCelebracion,
+        xpCapitulo1: xpCapitulo1 ?? this.xpCapitulo1,
+        xpCapitulo2: xpCapitulo2 ?? this.xpCapitulo2,
+        xpCapitulo3: xpCapitulo3 ?? this.xpCapitulo3,
+        xpCapitulo4: xpCapitulo4 ?? this.xpCapitulo4,
       );
 
   Map<String, dynamic> toJson() => {
@@ -233,6 +249,10 @@ class ParametrosJuego {
         'vibrarPista': vibrarPista,
         'celebracionAnimada': celebracionAnimada,
         'segundosCelebracion': segundosCelebracion,
+        'xpCapitulo1': xpCapitulo1,
+        'xpCapitulo2': xpCapitulo2,
+        'xpCapitulo3': xpCapitulo3,
+        'xpCapitulo4': xpCapitulo4,
       };
 
   /// Lee lo guardado; lo que falte o esté mal queda en su valor por defecto.
@@ -265,6 +285,10 @@ class ParametrosJuego {
       vibrarPista: b('vibrarPista', defectoVibrarPista),
       celebracionAnimada: b('celebracionAnimada', defectoCelebracionAnimada),
       segundosCelebracion: n('segundosCelebracion', defectoSegundosCelebracion),
+      xpCapitulo1: n('xpCapitulo1', defectoXpCapitulo1),
+      xpCapitulo2: n('xpCapitulo2', defectoXpCapitulo2),
+      xpCapitulo3: n('xpCapitulo3', defectoXpCapitulo3),
+      xpCapitulo4: n('xpCapitulo4', defectoXpCapitulo4),
     );
   }
 }

@@ -2,29 +2,40 @@
 // inicio_apoderado.dart
 // Fecha: 18-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v6 — paso F5
+// Versión: v9 — paso G2b
 //
-// CAMBIOS v6 respecto a la v5:
-//  - La tarjeta "Resumen de hoy" ya no es provisoria: es la tarjeta
-//    real del monitoreo (widgets/tarjeta_resumen_hoy.dart), con el
-//    botón para iniciar y terminar el monitoreo. Era el pendiente del
-//    antiguo paso C5.
+// CAMBIOS v9 respecto a la v8:
+//  - Actividad sugerida: título de 21 → 19 y título y descripción sin
+//    "viudas" (la última línea nunca queda con una sola palabra).
 //
-// Esqueleto del dashboard del apoderado: encabezado, participante,
-// estado de conexión real, actividad sugerida e Historial.
+// Inicio del apoderado: encabezado, avisos (solo si hay problema),
+// alertas de hoy, actividad sugerida e Historial.
 // ============================================================
 
 import 'package:flutter/material.dart';
 
+import '../../modelos/juego.dart';
 import '../../modelos/participante.dart';
+import '../../modelos/pose.dart';
 import '../../servicios/servicio_ble.dart';
+import '../../servicios/servicio_cinturon.dart';
 import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
+import '../../widgets/barra_mundos.dart';
+import '../../widgets/figura_tu.dart';
 import '../../widgets/tarjeta_resumen_hoy.dart';
 import 'configuracion_screen.dart';
 import 'historial_screen.dart';
 import 'participantes_screen.dart';
+
+// ---------- PARÁMETROS AJUSTABLES ----------
+// Diámetro del círculo con el ícono del juego en la actividad sugerida.
+const double tamanoIconoActividad = 72;
+// Juego que se sugiere (por ahora fijo; más adelante, según el día).
+const Juego juegoSugerido = juegoImitaAQuique;
+// Cuánto se inclina la figura del ícono (unidades; solo dibujo).
+const double inclinacionIconoActividad = 22;
 
 class InicioApoderado extends StatelessWidget {
   final VoidCallback alIrAlMundoNino;
@@ -41,7 +52,6 @@ class InicioApoderado extends StatelessWidget {
   }
 
   Widget _contenido(BuildContext context, Participante? activo) {
-    final ble = ServicioBle.instancia;
     final nombre = activo?.nombreVisible;
 
     return Container(
@@ -53,10 +63,9 @@ class InicioApoderado extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24 + espacioBajoEsquinas),
               children: [
-                Text(_fechaDeHoy(), style: Textos.secundario),
-                const SizedBox(height: 4),
+                // --- Encabezado ---
                 Row(
                   children: [
                     Expanded(
@@ -71,84 +80,23 @@ class InicioApoderado extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                _lineaParticipante(context, activo),
-                const SizedBox(height: 4),
-                // Estado de conexión real, se actualiza solo.
-                ValueListenableBuilder<EstadoConexion>(
-                  valueListenable: ble.estado,
-                  builder: (context, estado, _) {
-                    final conectado = estado == EstadoConexion.conectado;
-                    return Row(
-                      children: [
-                        Icon(Icons.circle,
-                            size: 9,
-                            color: conectado ? Colores.comodo : Colores.ambar),
-                        const SizedBox(width: 6),
-                        Text(
-                          conectado ? 'Wearable conectado' : 'Buscando el wearable…',
-                          style: Textos.secundario,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 20),
-                // Resumen de hoy: monitoreo real del participante activo.
-                const TarjetaResumenHoy(),
-                const SizedBox(height: 14),
-                // Actividad sugerida: el único bloque en verde bosque.
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colores.bosque,
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Actividad sugerida',
-                        style: TextStyle(fontSize: 13, color: Colores.base),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Imita a Quique',
-                        style: TextStyle(
-                          fontFamily: fuenteTitulos,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: Colores.tarjeta,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colores.tarjeta,
-                          foregroundColor: Colores.bosque,
-                        ),
-                        onPressed: alIrAlMundoNino,
-                        child: Text(nombre == null ? 'Empezar' : 'Empezar con $nombre'),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Material(
-                  color: Colores.tarjeta,
-                  borderRadius: BorderRadius.circular(22),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                    leading: const Icon(Icons.insights_rounded, color: Colores.azul),
-                    title: const Text('Historial', style: Textos.cuerpoDestacado),
-                    subtitle: const Text('Postura y juegos, semana a semana', style: Textos.secundario),
-                    trailing: const Icon(Icons.chevron_right_rounded, color: Colores.azul),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const HistorialScreen()),
+                // --- Avisos: solo si hay un problema ---
+                if (activo == null)
+                  _aviso(
+                    icono: Icons.badge_rounded,
+                    texto: 'Sin participante elegido: toca para elegirlo',
+                    alTocar: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ParticipantesScreen()),
                     ),
                   ),
-                ),
+                _avisoConexion(),
+                const SizedBox(height: 14),
+                // --- Alertas de hoy (alto fijo) ---
+                const TarjetaResumenHoy(),
+                const SizedBox(height: 14),
+                _actividadSugerida(),
+                const SizedBox(height: 14),
+                _historial(context),
               ],
             ),
           ),
@@ -157,44 +105,154 @@ class InicioApoderado extends StatelessWidget {
     );
   }
 
-  /// Participante activo (o aviso si no hay). Toca para cambiarlo.
-  static Widget _lineaParticipante(BuildContext context, Participante? activo) {
-    final hay = activo != null;
-    final texto = activo != null
-        ? 'Participante ${activo.codigo} · ${activo.edadTexto}'
-        : 'Sin participante: los juegos no quedarán a nombre de nadie';
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ParticipantesScreen()),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: [
-            Icon(
-              hay ? Icons.badge_rounded : Icons.warning_amber_rounded,
-              size: 16,
-              color: hay ? Colores.neutro : Colores.ambar,
+  /// Aviso de conexión: solo aparece si el cinturón NO está conectado.
+  Widget _avisoConexion() {
+    final ble = ServicioBle.instancia;
+    return ValueListenableBuilder<EstadoConexion>(
+      valueListenable: ble.estado,
+      builder: (context, estado, _) {
+        if (estado == EstadoConexion.conectado) return const SizedBox.shrink();
+        return ValueListenableBuilder<DateTime?>(
+          valueListenable: ServicioCinturon.instancia.ultimaSincronizacion,
+          builder: (context, ultima, _) => _aviso(
+            icono: Icons.bluetooth_disabled_rounded,
+            texto: ultima == null
+                ? 'Cinturón sin conexión'
+                : 'Cinturón sin conexión · actualizado a las ${_hora(ultima)}',
+          ),
+        );
+      },
+    );
+  }
+
+  static Widget _aviso({required IconData icono, required String texto, VoidCallback? alTocar}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Material(
+        color: Colores.ambar.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: alTocar,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Icon(icono, size: 18, color: Colores.azul),
+                const SizedBox(width: 8),
+                Expanded(child: Text(texto, style: Textos.secundario.copyWith(color: Colores.azul))),
+              ],
             ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(texto, style: Textos.secundario),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  /// Ej.: "Domingo 11 de octubre"
-  static String _fechaDeHoy() {
-    const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    const meses = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-    ];
-    final hoy = DateTime.now();
-    return '${dias[hoy.weekday - 1]} ${hoy.day} de ${meses[hoy.month - 1]}';
+  /// Actividad sugerida: el único bloque en verde bosque. Toda la
+  /// tarjeta se toca (sin botón); la flecha lo indica.
+  Widget _actividadSugerida() {
+    final juego = juegoSugerido;
+    final costado = juego.vista == VistaFigura.costado;
+    return Material(
+      color: Colores.bosque,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: alIrAlMundoNino,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+          child: Row(
+            children: [
+              // Ícono del juego: la figura haciendo el movimiento, con su flecha.
+              Container(
+                width: tamanoIconoActividad,
+                height: tamanoIconoActividad,
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(color: Colores.tarjeta, shape: BoxShape.circle),
+                child: FiguraTu(
+                  adelante: costado ? inclinacionIconoActividad : 0,
+                  lateral: costado ? 0 : -inclinacionIconoActividad,
+                  siluetaAdelante: 0,
+                  siluetaLateral: 0,
+                  color: Colores.bosque,
+                  mostrarSilueta: false,
+                  mostrarSensores: false,
+                  mostrarSilla: false,
+                  vista: juego.vista,
+                  flechaDesde: 0,
+                  flechaHasta: costado ? inclinacionIconoActividad : -inclinacionIconoActividad,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Actividad sugerida', style: TextStyle(fontSize: 13, color: Colores.base)),
+                    const SizedBox(height: 2),
+                    Text(
+                      juego.nombreSinViuda,
+                      style: const TextStyle(
+                        height: 1.15,
+                        fontFamily: fuenteTitulos,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w700,
+                        color: Colores.tarjeta,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(juego.descripcionSinViuda, style: const TextStyle(fontSize: 13, color: Colores.base)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colores.tarjeta, size: 30),
+            ],
+          ),
+        ),
+      ),
+    );
   }
+
+  /// Historial: dice qué se va a encontrar.
+  Widget _historial(BuildContext context) {
+    return Material(
+      color: Colores.tarjeta,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const HistorialScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(color: Colores.fondo, borderRadius: BorderRadius.circular(14)),
+                child: const Icon(Icons.insights_rounded, color: Colores.azul, size: 28),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Historial', style: Textos.tituloTarjeta),
+                    SizedBox(height: 2),
+                    Text('Las alertas y los juegos de cada día, hora por hora', style: Textos.secundario),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colores.azul, size: 30),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _hora(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }

@@ -2,14 +2,17 @@
 // quiz_datos_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso F9.2 (quiz antes y después de jugar)
+// Versión: v2 — paso G3
+//
+// CAMBIOS v2 respecto a la v1:
+//  - El aviso dice QUIRQUINCHO (antes "armadillo"), como en la app.
 //
 // Herramienta del INVESTIGADOR (Configuración → Datos de prueba: quiz).
 // Para el participante activo:
 //  - Tabla: cada pregunta con la respuesta de ANTES y de DESPUÉS (el
 //    último quiz completo de cada momento) y su lectura (esperada /
 //    parcial / otra / no sabe; ver modelos/quiz.dart).
-//  - Aviso destacado si marcó el ARMADILLO como el que más cansa y como
+//  - Aviso destacado si marcó el QUIRQUINCHO como el que más cansa y como
 //    el más cómodo (la mala postura se siente cómoda).
 //  - Detalle de cada quiz: segundos hasta responder, cambios de opción
 //    y en qué posición estaba la tarjeta elegida. También los quiz
@@ -127,7 +130,7 @@ class QuizDatosScreen extends StatelessWidget {
         border: Border.all(color: Colores.ambar),
       ),
       child: Text(
-        '${m.titulo}: marcó el ARMADILLO como el que más cansa y también como el más cómodo '
+        '${m.titulo}: marcó el QUIRQUINCHO como el que más cansa y también como el más cómodo '
         '(la mala postura se siente cómoda).',
         style: Textos.cuerpo,
       ),

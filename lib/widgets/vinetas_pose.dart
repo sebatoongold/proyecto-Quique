@@ -27,6 +27,7 @@ import 'package:flutter/material.dart';
 
 import '../modelos/pose.dart';
 import '../tema/colores.dart';
+import '../tema/tema_app.dart';
 import 'figura_tu.dart';
 
 // Textos bajo cada viñeta (cortos, para el niño).
@@ -81,7 +82,7 @@ class VinetasPose extends StatelessWidget {
         children: [
           Text(
             '${i + 1}',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colores.ambar),
+            style: Textos.cuerpoDestacado.copyWith(color: Colores.ambar),
           ),
           Expanded(
             child: FiguraTu(
@@ -105,7 +106,8 @@ class VinetasPose extends StatelessWidget {
           Text(
             textosVinetas[i],
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colores.azul),
+            maxLines: 2,
+            style: Textos.etiqueta,
           ),
         ],
       ),

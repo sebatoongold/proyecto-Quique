@@ -45,6 +45,8 @@ import '../../widgets/icono_animal.dart';
 const Duration duracionGracias = Duration(milliseconds: 900);
 // Tamaño del ícono del animal en cada tarjeta.
 const double iconoTarjetaQuiz = 36;
+// Alto del globo de Quique: 3 líneas de Textos.subtitulo.
+const double altoGloboQuiz = 92;
 // Opacidad del color de fondo del animal en la tarjeta (0 = blanca).
 const double opacidadFondoTarjetaQuiz = 0.35;
 
@@ -253,15 +255,18 @@ class _QuizScreenState extends State<QuizScreen> {
         ),
         const SizedBox(width: 12),
         Expanded(
+          // Alto fijo: "¡Gracias!" y la pregunta larga ocupan lo mismo, así
+          // las tarjetas no se mueven al cambiar de frase.
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            height: altoGloboQuiz,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: Colores.tarjeta,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: Colores.linea),
             ),
-            child: Text(frase,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colores.azul)),
+            child: Text(frase, maxLines: 3, overflow: TextOverflow.ellipsis, style: Textos.subtitulo),
           ),
         ),
       ],
@@ -342,12 +347,11 @@ class _QuizScreenState extends State<QuizScreen> {
               left: 4,
               right: 4,
               bottom: 6,
-              child: Text(animal.nombre,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.fade,
-                  softWrap: false,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colores.azul)),
+              // Se achica si no cabe (p. ej. "Armadillo"), en vez de cortarse.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(animal.nombre, maxLines: 1, style: Textos.subtitulo),
+              ),
             ),
             if (marcada)
               const Positioned(
@@ -376,7 +380,7 @@ class _QuizScreenState extends State<QuizScreen> {
         side: BorderSide(color: marcada ? Colores.azul : Colores.neutro, width: marcada ? 4 : 1.5),
       ),
       onPressed: () => _elegir(respuestaNoSe),
-      child: const Text('No sé', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+      child: const Text('No sé'),
     );
   }
 

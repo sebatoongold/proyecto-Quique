@@ -1,30 +1,49 @@
 // ============================================================
 // barra_mundos.dart
 // Fecha: 19-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso F4
+// Proyecto: "La espalda no espera" — app Sóma
+// Versión: v4 — paso G2b
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Anota en el registro de uso cada intento de la puerta parental:
-//    "corto" (un toque), "soltada" (se soltó antes de tiempo) u "ok".
+// CAMBIOS v4 respecto a la v3:
+//  - Esquinas más grandes (`radioEsquinaMundos` 96 → 116) y el ícono y
+//    la etiqueta se achican solos si no caben (FittedBox): se corrige el
+//    "Bottom overflowed by 10.0" de la esquina derecha.
+//  - El RELOJ ahora es el CONTORNO: al mantener presionada la esquina
+//    del apoderado, se llena el borde curvo (un arco grueso,
+//    `grosorReloj`) desde abajo hasta el lado, como una aguja; el
+//    interior ya no se rellena. Un arco tenue muestra el recorrido que
+//    falta. Al completarse los 3 s, entra al mundo apoderado.
 //
-// La barra inferior cambia de MUNDO (no de sección):
-//  - De Apoderado a Niño: un toque, cambio directo.
-//  - De Niño a Apoderado: hay que MANTENER PRESIONADO el botón
-//    (puerta parental). Un anillo se llena mientras se mantiene; si se
-//    suelta antes, vuelve a cero. Un toque corto muestra una pista
-//    pensada para el adulto.
+// La barra de mundos son DOS ESQUINAS (cuartos de círculo) encima de
+// las pantallas: a la izquierda el mundo niño y a la derecha el mundo
+// apoderado; la del mundo activo va rellena de su color. Las pantallas
+// dejan `espacioBajoEsquinas` libre abajo.
+// De apoderado a niño es un toque; un toque corto
+// en la esquina del apoderado muestra una pista para el adulto; cada
+// intento se anota en el registro de uso (corto / soltada / ok).
 // ============================================================
+
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../servicios/registro_uso.dart';
 import '../tema/colores.dart';
 
-// ---------- PARÁMETRO AJUSTABLE ----------
+// ---------- PARÁMETROS AJUSTABLES ----------
 // Cuánto hay que mantener presionado para entrar al mundo apoderado.
 // Más largo = más difícil para un niño entrar sin querer.
 const Duration duracionPuertaParental = Duration(seconds: 3);
+// Radio de cada esquina (cuarto de círculo), en puntos. Más grande =
+// más fácil de tocar y el relleno se ve más alrededor del dedo.
+const double radioEsquinaMundos = 116;
+// Espacio que las pantallas deben dejar libre abajo para que las
+// esquinas no tapen su contenido.
+const double espacioBajoEsquinas = radioEsquinaMundos - 20;
+// Grosor del arco que se llena como reloj en la puerta parental.
+const double grosorReloj = 9;
+// Debajo de este avance (0..1), soltar cuenta como "toque corto".
+const double umbralToqueCorto = 0.15;
 
 enum Mundo { nino, apoderado }
 
@@ -38,8 +57,7 @@ class BarraMundos extends StatefulWidget {
   State<BarraMundos> createState() => _BarraMundosState();
 }
 
-class _BarraMundosState extends State<BarraMundos>
-    with SingleTickerProviderStateMixin {
+class _BarraMundosState extends State<BarraMundos> with SingleTickerProviderStateMixin {
   late final AnimationController _puerta = AnimationController(
     vsync: this,
     duration: duracionPuertaParental,
@@ -59,15 +77,16 @@ class _BarraMundosState extends State<BarraMundos>
 
   void _soltar() {
     if (_puerta.isCompleted) return;
-    RegistroUso.anotar('puerta_intento', dato: _puerta.value < 0.15 ? 'corto' : 'soltada');
+    final corto = _puerta.value < umbralToqueCorto;
+    RegistroUso.anotar('puerta_intento', dato: corto ? 'corto' : 'soltada');
     // Toque corto: probablemente alguien no sabe que hay que mantener.
-    if (_puerta.value < 0.15) {
+    if (corto) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
             content: Text(
-              'Para el apoderado: mantén presionado '
+              'Para el apoderado: mantén presionada la esquina '
               '${duracionPuertaParental.inSeconds} segundos.',
             ),
             duration: const Duration(seconds: 2),
@@ -80,84 +99,78 @@ class _BarraMundosState extends State<BarraMundos>
   @override
   Widget build(BuildContext context) {
     final enNino = widget.actual == Mundo.nino;
+    // Respeta la barra de gestos del teléfono: la esquina crece hacia abajo.
+    final abajo = MediaQuery.of(context).padding.bottom;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colores.tarjeta,
-        border: Border(top: BorderSide(color: Colores.linea)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 76,
-          child: Row(
-            children: [
-              Expanded(
-                child: _item(
-                  icono: Icons.child_care_rounded,
-                  texto: 'Niño',
-                  activo: enNino,
-                  colorActivo: Colores.bosque,
-                  alTocar: enNino ? null : () => widget.alCambiar(Mundo.nino),
-                ),
-              ),
-              Expanded(
-                child: enNino
-                    ? _puertaParental()
-                    : _item(
-                        icono: Icons.person_rounded,
-                        texto: 'Apoderado',
-                        activo: true,
-                        colorActivo: Colores.azul,
-                      ),
-              ),
-            ],
+    // Stack sin hijos normales: solo ocupa (y recibe toques en) las esquinas;
+    // el resto de la pantalla sigue tocándose como siempre.
+    return Stack(
+      children: [
+        Positioned(
+          left: 0,
+          bottom: 0,
+          child: _esquina(
+            izquierda: true,
+            abajo: abajo,
+            icono: Icons.child_care_rounded,
+            texto: 'Niño',
+            activa: enNino,
+            color: Colores.bosque,
+            alTocar: enNino ? null : () => widget.alCambiar(Mundo.nino),
           ),
         ),
-      ),
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: enNino
+              ? _puertaParental(abajo)
+              : _esquina(
+                  izquierda: false,
+                  abajo: abajo,
+                  icono: Icons.person_rounded,
+                  texto: 'Apoderado',
+                  activa: true,
+                  color: Colores.azul,
+                ),
+        ),
+      ],
     );
   }
 
-  Widget _item({
+  /// Una esquina normal (sin puerta).
+  Widget _esquina({
+    required bool izquierda,
+    required double abajo,
     required IconData icono,
     required String texto,
-    required bool activo,
-    required Color colorActivo,
+    required bool activa,
+    required Color color,
     VoidCallback? alTocar,
   }) {
-    final color = activo ? colorActivo : Colores.textoSecundario;
-    return InkWell(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: alTocar,
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-          decoration: BoxDecoration(
-            color: activo ? colorActivo.withValues(alpha: 0.12) : null,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icono, color: color, size: 28),
-              const SizedBox(height: 2),
-              Text(
-                texto,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: color,
-                  fontWeight: activo ? FontWeight.w700 : FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
+      child: CustomPaint(
+        painter: _PintorEsquina(
+          izquierda: izquierda,
+          fondo: activa ? color : Colores.tarjeta,
+          borde: activa ? null : Colores.linea,
+        ),
+        child: _contenido(
+          izquierda: izquierda,
+          abajo: abajo,
+          icono: icono,
+          texto: texto,
+          color: activa ? Colores.tarjeta : Colores.textoSecundario,
+          negrita: activa,
         ),
       ),
     );
   }
 
-  /// Botón "Apoderado" visto desde el mundo niño: gris, con candado, y
-  /// un anillo que se llena mientras se mantiene presionado.
-  Widget _puertaParental() {
+  /// Esquina del apoderado vista desde el mundo niño: hay que mantenerla
+  /// presionada; se llena como un reloj.
+  Widget _puertaParental(double abajo) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _puerta.forward(),
@@ -166,37 +179,151 @@ class _BarraMundosState extends State<BarraMundos>
       child: AnimatedBuilder(
         animation: _puerta,
         builder: (context, _) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 34,
-                  height: 34,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        value: _puerta.value,
-                        strokeWidth: 3,
-                        color: Colores.azul,
-                        backgroundColor: Colors.transparent,
-                      ),
-                      const Icon(Icons.lock_rounded,
-                          color: Colores.incomodo, size: 20),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Apoderado',
-                  style: TextStyle(fontSize: 12.5, color: Colores.incomodo),
-                ),
-              ],
+          return CustomPaint(
+            painter: _PintorEsquina(
+              izquierda: false,
+              fondo: Colores.tarjeta,
+              borde: Colores.linea,
+              avance: _puerta.value,
+              colorAvance: Colores.azul,
+              mostrarPista: true,
+            ),
+            child: _contenido(
+              izquierda: false,
+              abajo: abajo,
+              icono: Icons.lock_rounded,
+              texto: 'Apoderado',
+              color: Colores.textoSecundario,
+              negrita: false,
             ),
           );
         },
       ),
     );
   }
+
+  /// Ícono y etiqueta, cerca del centro del cuarto de círculo.
+  Widget _contenido({
+    required bool izquierda,
+    required double abajo,
+    required IconData icono,
+    required String texto,
+    required Color color,
+    required bool negrita,
+  }) {
+    return SizedBox(
+      // Cuadrado: el cuarto de círculo crece con la barra de gestos.
+      width: radioEsquinaMundos + abajo,
+      height: radioEsquinaMundos + abajo,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: izquierda ? 18 : 40,
+          right: izquierda ? 40 : 18,
+          top: 40,
+          bottom: abajo + 14,
+        ),
+        child: Align(
+          alignment: izquierda ? Alignment.bottomLeft : Alignment.bottomRight,
+          // Si el texto del teléfono es grande, se achica en vez de cortarse.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: izquierda ? Alignment.bottomLeft : Alignment.bottomRight,
+            child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: izquierda ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+          children: [
+            Icon(icono, color: color, size: 28),
+            const SizedBox(height: 2),
+            Text(
+              texto,
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+                fontWeight: negrita ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dibuja un cuarto de círculo con centro en la esquina de abajo
+/// (izquierda o derecha) y, si hay `avance`, el reloj en el contorno:
+/// un arco grueso sobre el borde curvo, desde abajo hasta el lado.
+class _PintorEsquina extends CustomPainter {
+  final bool izquierda;
+  final Color fondo;
+  final Color? borde;
+  final double avance; // 0..1
+  final Color colorAvance;
+  final bool mostrarPista; // arco tenue con el recorrido del reloj
+
+  _PintorEsquina({
+    required this.izquierda,
+    required this.fondo,
+    this.borde,
+    this.avance = 0,
+    this.colorAvance = Colores.azul,
+    this.mostrarPista = false,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Centro del círculo: la esquina de abajo. El radio cubre el alto
+    // completo (incluida la barra de gestos del teléfono).
+    final centro = Offset(izquierda ? 0 : size.width, size.height);
+    final radio = size.height;
+    final rect = Rect.fromCircle(center: centro, radius: radio);
+    // Ángulos de Flutter: 0 = derecha, −π/2 = arriba, π = izquierda.
+    // Esquina izquierda: de −π/2 (arriba) a 0 (derecha).
+    // Esquina derecha:   de π (izquierda) a 3π/2 (arriba).
+    final inicio = izquierda ? -math.pi / 2 : math.pi;
+    const barrido = math.pi / 2;
+
+    final cuarto = Path()
+      ..moveTo(centro.dx, centro.dy)
+      ..arcTo(rect, inicio, barrido, false)
+      ..close();
+    canvas.drawShadow(cuarto, Colors.black, 3, false);
+    canvas.drawPath(cuarto, Paint()..color = fondo);
+    if (borde != null) {
+      canvas.drawArc(
+        rect.deflate(0.75),
+        inicio,
+        barrido,
+        false,
+        Paint()
+          ..color = borde!
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
+    }
+
+    // Reloj en el CONTORNO (solo la esquina derecha lo usa): un arco
+    // grueso sobre el borde curvo que avanza desde abajo (horizontal,
+    // hacia la izquierda) hasta el lado (vertical), como las agujas del
+    // reloj. Debajo, el mismo arco tenue: el recorrido que falta.
+    if (avance > 0 || mostrarPista) {
+      final rectArco = rect.deflate(grosorReloj / 2);
+      final trazo = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = grosorReloj
+        ..strokeCap = StrokeCap.round;
+      if (mostrarPista) {
+        canvas.drawArc(rectArco, math.pi, barrido, false, trazo..color = colorAvance.withValues(alpha: 0.18));
+      }
+      final a = avance.clamp(0.0, 1.0).toDouble();
+      if (a > 0) {
+        canvas.drawArc(rectArco, math.pi, barrido * a, false, trazo..color = colorAvance);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PintorEsquina old) =>
+      old.avance != avance || old.fondo != fondo || old.borde != borde || old.izquierda != izquierda;
 }

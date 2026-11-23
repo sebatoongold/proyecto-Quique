@@ -2,13 +2,13 @@
 // exportar_datos.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v8 — paso F9.2
+// Versión: v9 — paso G3
 //
-// CAMBIOS v8 respecto a la v7:
-//  - Se exportan los QUIZ de cada participante ('quiz'): momento,
-//    respuestas, lectura de cada una, orden de las tarjetas, tiempos y
-//    cambios de opción (ver modelos/quiz.dart).
-//  - Formato 'quique-testeo-v8'.
+// CAMBIOS v9 respecto a la v8:
+//  - Se exporta el PROGRESO de explorador de cada participante
+//    ('progreso': experiencia, capítulos vistos, fotos, insignias y días
+//    jugados).
+//  - Formato 'quique-testeo-v9'.
 //
 // Arma un texto JSON con los datos de un participante (o de todos) y
 // lo copia al PORTAPAPELES. Desde ahí se pega donde convenga: un correo
@@ -38,13 +38,14 @@ import 'servicio_parametros.dart';
 import 'servicio_cinturon.dart';
 import 'servicio_monitoreo.dart';
 import 'servicio_participantes.dart';
+import 'servicio_progreso.dart';
 import 'servicio_quiz.dart';
 
 // ---------- PARÁMETROS AJUSTABLES ----------
 // Identifica la versión del formato exportado. Si en un paso futuro se
 // agregan datos (eventos, recorrido…), se sube el número para saber
 // qué contiene cada exportación.
-const String formatoExportacion = 'quique-testeo-v8';
+const String formatoExportacion = 'quique-testeo-v9';
 
 class ExportarDatos {
   ExportarDatos._();
@@ -124,6 +125,7 @@ class ExportarDatos {
       'episodiosCinturon': _episodiosCinturon(p.codigo),
       'usoApp': _uso(p.codigo),
       'quiz': _quiz(p.codigo),
+      'progreso': ServicioProgreso.instancia.de(p.codigo).toJson(),
     };
     return const JsonEncoder.withIndent('  ').convert(datos);
   }
@@ -141,6 +143,7 @@ class ExportarDatos {
         'episodiosCinturon': _episodiosCinturon(p.codigo),
         'usoApp': _uso(p.codigo),
         'quiz': _quiz(p.codigo),
+        'progreso': ServicioProgreso.instancia.de(p.codigo).toJson(),
       });
     }
     final sinParticipante = await AlmacenamientoJuegos.cargarDe(null);

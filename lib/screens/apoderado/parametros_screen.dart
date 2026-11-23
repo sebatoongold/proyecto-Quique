@@ -2,12 +2,13 @@
 // parametros_screen.dart
 // Fecha: 19-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v8 — paso F8
+// Versión: v10 — paso G3
 //
-// CAMBIOS v8 respecto a la v7:
-//  - Nueva sección "Pista y celebración" (después de "Tiempos"): flecha
-//    que late sobre la figura, vibración de la pista, celebración animada
-//    o sencilla, y cuántos segundos dura la celebración de cada pose.
+// CAMBIOS v10 respecto a la v9:
+//  - Nueva sección "Historia y experiencia" (antes de "Investigador"):
+//    cuánta experiencia pide cada capítulo, y un botón para reiniciar el
+//    progreso de explorador del participante activo (para empezar cada
+//    sesión de testeo desde el prólogo).
 //
 // Herramienta del INVESTIGADOR (Configuración → Parámetros del juego):
 // cambia cómo se comporta el juego sin recompilar, para probar
@@ -29,6 +30,8 @@ import 'package:flutter/material.dart';
 
 import '../../modelos/parametros_juego.dart';
 import '../../servicios/servicio_parametros.dart';
+import '../../servicios/servicio_participantes.dart';
+import '../../servicios/servicio_progreso.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 
@@ -152,7 +155,7 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
                 alCambiar: (v, g) => _cambiar(_p.copyWith(segundosPista: v), guardar: g),
               ),
               _deslizador(
-                titulo: 'Segundos hasta que Quique ofrece ayuda',
+                titulo: 'Segundos hasta que Sóma ofrece ayuda',
                 valor: _p.segundosAyuda,
                 rango: rangoSegundosAyuda,
                 texto: '${_p.segundosAyuda.round()} s',
@@ -165,7 +168,7 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
                 ayuda: _p.pistaAnimada
                     ? 'Sí: con la pista, una flecha ámbar late sobre la figura grande, desde cómo '
                         'está sentado hasta la pose. Si lo que falta no se ve en esa vista (p. ej. '
-                        'encorvarse en «Imita a Quique»), queda la flecha de la miniatura.'
+                        'encorvarse en «De izquierda a derecha»), queda la flecha de la miniatura.'
                     : 'No: la pista solo destaca la miniatura de la esquina, como antes.',
                 valor: _p.pistaAnimada,
                 alCambiar: (v) => _cambiar(_p.copyWith(pistaAnimada: v), guardar: true),
@@ -183,7 +186,7 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
                 ayuda: _p.celebracionAnimada
                     ? 'Sí: al lograr cada pose, la figura da un saltito y sale confeti. Al terminar, '
                         'más confeti y las poses con su marca ✓.'
-                    : 'No: la celebración sencilla de antes (texto y cara de Quique).',
+                    : 'No: la celebración sencilla de antes (texto y cara de Sóma).',
                 valor: _p.celebracionAnimada,
                 alCambiar: (v) => _cambiar(_p.copyWith(celebracionAnimada: v), guardar: true),
               ),
@@ -200,7 +203,7 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
               const Padding(
                 padding: EdgeInsets.fromLTRB(4, 0, 4, 10),
                 child: Text(
-                  '«De lo alto a lo bajo», de costado: alto → medio camino → bolita → alto. '
+                  '«Desde arriba para abajo», de costado: alto → medio camino → bolita → alto. '
                   'Las unidades miden cuánto se CURVA la espalda (adelante = +).',
                   style: Textos.secundario,
                 ),
@@ -347,6 +350,33 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
                 alCambiar: (v, g) => _cambiar(_p.copyWith(segundosVentanaPista: v), guardar: g),
               ),
 
+              _seccion('Historia y experiencia'),
+              for (final (i, valor, copia) in [
+                (1, _p.xpCapitulo1, (double v) => _p.copyWith(xpCapitulo1: v)),
+                (2, _p.xpCapitulo2, (double v) => _p.copyWith(xpCapitulo2: v)),
+                (3, _p.xpCapitulo3, (double v) => _p.copyWith(xpCapitulo3: v)),
+                (4, _p.xpCapitulo4, (double v) => _p.copyWith(xpCapitulo4: v)),
+              ])
+                _deslizador(
+                  titulo: 'Experiencia para abrir el capítulo $i',
+                  ayuda: i == 1
+                      ? 'Una actividad da unos 30–50 XP. Con los valores por defecto, en una '
+                          'sesión de 2 o 3 actividades se ven 2 o 3 capítulos.'
+                      : null,
+                  valor: valor,
+                  rango: rangoXpCapitulo,
+                  texto: '${valor.round()} XP',
+                  alCambiar: (v, g) => _cambiar(copia(v), guardar: g),
+                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.restart_alt_rounded),
+                  label: const Text('Reiniciar el viaje del participante activo'),
+                  onPressed: _reiniciarProgreso,
+                ),
+              ),
+
               _seccion('Investigador'),
               _interruptor(
                 titulo: 'Números de prueba sobre la figura',
@@ -359,6 +389,29 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
         ),
       ),
     );
+  }
+
+  /// G3: deja el progreso de explorador del participante activo en cero
+  /// (experiencia, capítulos vistos, fotos, insignias). Pregunta antes.
+  Future<void> _reiniciarProgreso() async {
+    final codigo = ServicioParticipantes.instancia.activo.value?.codigo;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Reiniciar el viaje?'),
+        content: Text('Se borran la experiencia, los capítulos vistos, las fotos y las insignias de '
+            '${codigo ?? 'sin participante'}. Los juegos y los datos del testeo no se tocan.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Reiniciar')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ServicioProgreso.instancia.reiniciar(codigo);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Viaje reiniciado.')));
+    }
   }
 
   Widget _estado() {

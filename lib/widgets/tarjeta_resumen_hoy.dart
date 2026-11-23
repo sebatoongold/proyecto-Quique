@@ -1,20 +1,36 @@
 // ============================================================
 // tarjeta_resumen_hoy.dart
-// Fecha: 19-10-2026
+// Fecha: 29-10-2026
 // Proyecto: "La espalda no espera" — app Quique
-// Versión: v4 — paso F4
+// Versión: v5 — paso G1 (rediseño del Inicio del apoderado)
 //
-// CAMBIOS v4 respecto a la v3:
-//  - Al tocarla, abre el Historial indicando que viene del Resumen de
-//    hoy (para el registro de uso).
+// CAMBIOS v5 respecto a la v4:
+//  - Pasa a llamarse "ALERTAS DE HOY" (el nombre de la clase y del
+//    archivo no cambian, para no tocar otras pantallas).
+//  - ALTO FIJO (`altoTarjetaAlertas`): mide lo mismo con alertas y sin
+//    alertas, así el Inicio no "salta" cuando llega la primera.
+//  - CON ALERTAS, en dos columnas:
+//      izquierda: el NÚMERO grande (`tamanoNumeroAlertas`) y "veces que
+//                 se encorvó o se inclinó";
+//      derecha:   la alerta MÁS RECIENTE con una figura que muestra
+//                 hacia dónde fue (adelante = de costado; al lado o
+//                 ambos = de frente) y, abajo, el TIEMPO TOTAL de hoy.
+//  - SIN ALERTAS: un ✓ y "No se han registrado alertas el día de hoy".
+//  - La flecha (se puede tocar) va arriba a la derecha.
+//  - Se quitó la línea "Actualizado a las…": la hora de la última
+//    actualización aparece en el aviso del Inicio solo si el cinturón
+//    no está conectado (inicio_apoderado.dart).
 //
-// Muestra las VECES que se encorvó o inclinó (episodios de más de 3 s
-// fuera de los juegos), y en segundo plano el tiempo total, la más
-// larga y la dirección.
+// Al tocarla abre el Historial en Postura (para el registro de uso,
+// sigue anotando el origen 'resumen_hoy').
+//
+// Cuenta los episodios de más de 3 s FUERA de los juegos, desde la
+// cola del cinturón (analisis_postura.dart).
 // ============================================================
 
 import 'package:flutter/material.dart';
 
+import '../modelos/pose.dart';
 import '../modelos/registro_juego.dart';
 import '../screens/apoderado/historial_screen.dart';
 import '../servicios/almacenamiento_juegos.dart';
@@ -23,7 +39,20 @@ import '../servicios/servicio_cinturon.dart';
 import '../servicios/servicio_participantes.dart';
 import '../tema/colores.dart';
 import '../tema/tema_app.dart';
+import 'figura_tu.dart';
 import 'linea_tiempo_postura.dart';
+
+// ---------- PARÁMETROS AJUSTABLES ----------
+// Alto de la tarjeta (igual con y sin alertas).
+const double altoTarjetaAlertas = 190;
+// Tamaño del número de alertas.
+const double tamanoNumeroAlertas = 72;
+// Cuánto se inclina la figura de "la más reciente" (unidades del
+// sensor; solo dibujo: muestra la dirección, no el ángulo real).
+const double inclinacionFiguraAlerta = 30;
+// Tamaño de la figura de "la más reciente".
+const double anchoFiguraAlerta = 56;
+const double altoFiguraAlerta = 70;
 
 class TarjetaResumenHoy extends StatefulWidget {
   const TarjetaResumenHoy({super.key});
@@ -40,7 +69,6 @@ class _TarjetaResumenHoyState extends State<TarjetaResumenHoy> {
   void initState() {
     super.initState();
     _cinturon.episodios.addListener(_refrescar);
-    _cinturon.ultimaSincronizacion.addListener(_refrescar);
     ServicioParticipantes.instancia.activo.addListener(_cargarJuegos);
     _cargarJuegos();
   }
@@ -48,7 +76,6 @@ class _TarjetaResumenHoyState extends State<TarjetaResumenHoy> {
   @override
   void dispose() {
     _cinturon.episodios.removeListener(_refrescar);
-    _cinturon.ultimaSincronizacion.removeListener(_refrescar);
     ServicioParticipantes.instancia.activo.removeListener(_cargarJuegos);
     super.dispose();
   }
@@ -70,78 +97,139 @@ class _TarjetaResumenHoyState extends State<TarjetaResumenHoy> {
       episodios: _cinturon.de(codigo),
       juegos: _juegos,
     );
-    final ultima = _cinturon.ultimaSincronizacion.value;
     return Material(
       color: Colores.tarjeta,
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const HistorialScreen(inicial: SeccionHistorial.postura, origen: 'resumen_hoy')),
+          MaterialPageRoute(
+              builder: (_) => const HistorialScreen(inicial: SeccionHistorial.postura, origen: 'resumen_hoy')),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Expanded(child: Text('Resumen de hoy', style: Textos.tituloTarjeta)),
-                  Icon(Icons.chevron_right_rounded, color: Colores.azul),
-                ],
-              ),
-              const SizedBox(height: 10),
-              if (hoy.episodios.isEmpty)
-                const Text(
-                  'Todavía no hay registros hoy. Cuando use el cinturón cerca del teléfono, '
-                  'aparecerán aquí.',
-                  style: Textos.secundario,
-                )
-              else ..._datos(hoy),
-              const SizedBox(height: 10),
-              Text(
-                ultima == null ? 'Sin actualizar todavía' : 'Actualizado a las ${_hora(ultima)}',
-                style: Textos.secundario.copyWith(fontSize: 12),
-              ),
-            ],
+        child: SizedBox(
+          height: altoTarjetaAlertas,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 12, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('Alertas de hoy',
+                          style: Textos.secundario.copyWith(fontWeight: FontWeight.w700)),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: Colores.azul, size: 28),
+                  ],
+                ),
+                Expanded(child: hoy.veces == 0 ? _sinAlertas() : _conAlertas(hoy)),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  List<Widget> _datos(PosturaDelDia hoy) {
-    final veces = hoy.veces;
-    return [
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text('$veces', style: Textos.dato),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                veces == 1 ? 'vez se encorvó o se inclinó' : 'veces se encorvó o se inclinó',
-                style: Textos.cuerpoDestacado,
-              ),
-            ),
-          ),
-        ],
-      ),
-      const Text('más de 3 segundos seguidos, en todo el día', style: Textos.secundario),
-      if (veces > 0) ...[
-        const SizedBox(height: 12),
-        Text(
-          'En total ${textoTiempo(hoy.msTotal)} · la más larga, ${textoTiempo(hoy.msMasLargo)}.',
-          style: Textos.cuerpo,
+  Widget _sinAlertas() {
+    return Row(
+      children: [
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(color: Colores.comodo.withValues(alpha: 0.18), shape: BoxShape.circle),
+          child: const Icon(Icons.check_rounded, color: Colores.comodo, size: 40),
         ),
-        if (hoy.direccionDominante != null)
-          Text('Sobre todo ${textoDireccion(hoy.direccionDominante!)}.', style: Textos.cuerpo),
+        const SizedBox(width: 16),
+        const Expanded(
+          child: Text('No se han registrado alertas el día de hoy',
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Colores.azul)),
+        ),
       ],
-    ];
+    );
   }
 
-  static String _hora(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  Widget _conAlertas(PosturaDelDia hoy) {
+    final veces = hoy.veces;
+    final reciente = hoy.queCuentan.first; // la lista va de la más reciente a la más antigua
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // --- Izquierda: el número ---
+        Expanded(
+          flex: 5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text('$veces',
+                    style: const TextStyle(
+                        fontSize: tamanoNumeroAlertas, height: 1, fontWeight: FontWeight.w700, color: Colores.azul)),
+              ),
+              const SizedBox(height: 6),
+              Text(veces == 1 ? 'vez que se encorvó o se inclinó' : 'veces que se encorvó o se inclinó',
+                  style: Textos.secundario.copyWith(fontSize: 13)),
+            ],
+          ),
+        ),
+        Container(width: 1.5, margin: const EdgeInsets.symmetric(horizontal: 12), color: Colores.linea),
+        // --- Derecha: la más reciente y el tiempo total ---
+        Expanded(
+          flex: 5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('La más reciente', style: Textos.secundario.copyWith(fontSize: 12.5)),
+              Expanded(
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: anchoFiguraAlerta,
+                      height: altoFiguraAlerta,
+                      child: _figuraDireccion(reciente.direccion),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(textoDireccion(reciente.direccion),
+                          style: Textos.cuerpoDestacado.copyWith(fontSize: 14)),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.schedule_rounded, size: 18, color: Colores.azul),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text('${textoTiempo(hoy.msTotal)} en total',
+                        style: Textos.cuerpoDestacado.copyWith(fontSize: 14)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Figura que muestra hacia dónde fue la alerta: adelante = de
+  /// costado curvándose; al lado o ambos = de frente inclinándose.
+  Widget _figuraDireccion(String direccion) {
+    final adelante = direccion == 'adelante';
+    return FiguraTu(
+      adelante: adelante ? inclinacionFiguraAlerta : 0,
+      lateral: adelante ? 0 : inclinacionFiguraAlerta,
+      siluetaAdelante: 0,
+      siluetaLateral: 0,
+      color: Colores.azul,
+      mostrarSilueta: false,
+      mostrarSensores: false,
+      mostrarSilla: adelante,
+      vista: adelante ? VistaFigura.costado : VistaFigura.frente,
+    );
+  }
 }

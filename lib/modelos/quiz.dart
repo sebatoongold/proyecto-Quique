@@ -80,10 +80,10 @@ const String respuestaNoSe = 'no_se';
 
 /// Cómo se lee una respuesta.
 enum LecturaRespuesta {
-  esperada('esperada'),
-  parcial('parcial'),
-  otra('otra'),
-  noSe('no sabe'),
+  esperada('Esperada'),
+  parcial('Parcial'),
+  otra('Otra'),
+  noSe('No sabe'),
   sinCorrecta('—'); // pregunta sin respuesta correcta
 
   final String texto;
