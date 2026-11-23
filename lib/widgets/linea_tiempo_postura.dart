@@ -1,14 +1,13 @@
 // ============================================================
 // linea_tiempo_postura.dart
 // Fecha: 19-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso F4
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v3 — paso G5
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Anota en el registro de uso CÓMO se navega la línea de tiempo:
-//    "desplazo" (arrastró con el dedo; uno por gesto), "toco_hora",
-//    "cambio_dia" y "abrio_mes". Responde si los apoderados usan el
-//    desplazamiento con foco o tocan las filas.
+// CAMBIOS v3 respecto a la v2:
+//  - Textos visibles: "cinturón" pasa a "polerón" (la prenda del
+//    sistema). Los nombres internos (clases, claves guardadas) no
+//    cambian, para no perder datos.
 //
 // La línea de tiempo del día, en tres partes:
 //
@@ -282,7 +281,7 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
               decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
             ),
             const SizedBox(width: 8),
-            Expanded(child: Text(texto, style: Textos.cuerpo)),
+            Expanded(child: Text(texto, style: Textos.cuerpo.copyWith(fontSize: 15))),
           ],
         ),
       );
@@ -297,7 +296,7 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'El cinturón se reinició antes de enviarlos, así que no se sabe a qué hora '
+                  'El polerón se reinició antes de enviarlos, así que no se sabe a qué hora '
                   'ocurrieron. Se muestran el día en que llegaron.',
                   style: Textos.secundario,
                 ),
@@ -378,7 +377,7 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
               width: 50,
               child: Text(
                 '${_dos(hora)}:00',
-                style: enFoco ? Textos.cuerpoDestacado : Textos.cuerpo.copyWith(color: Colores.textoSecundario),
+                style: (enFoco ? Textos.cuerpoDestacado : Textos.secundario).copyWith(fontSize: 15),
               ),
             ),
             Expanded(
@@ -474,7 +473,7 @@ class _LineaTiempoPosturaState extends State<LineaTiempoPostura> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(_diasCortos[d.weekday - 1], style: Textos.nota),
+          Text(_diasCortos[d.weekday - 1], style: Textos.secundario.copyWith(fontSize: 12)),
           const SizedBox(height: 2),
           Container(
             width: 30,

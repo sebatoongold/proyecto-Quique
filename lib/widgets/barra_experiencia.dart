@@ -1,8 +1,15 @@
 // ============================================================
 // barra_experiencia.dart
 // Fecha: 23-11-2026
-// Proyecto: "La espalda no espera" — app Sóma
-// Versión: v1 — paso G3 (historia y experiencia)
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v2 — paso G5
+//
+// CAMBIOS v2 respecto a la v1:
+//  - La barra va dentro de una TARJETA Crema banda (con borde Arena), así
+//    se separa del fondo Tierra seca.
+//  - El relleno pasa de ámbar a BOSQUE: el ámbar es un estado de Sóma
+//    ("un poco incómodo") y no debe confundirse con la experiencia.
+//  - Textos con los estilos de Textos (etiqueta / pequeño).
 //
 // "Explorador · 120 XP" y una barra hasta el PRÓXIMO capítulo de la
 // historia ("faltan 30 para el Desierto de Atacama"). Se usa en el
@@ -27,6 +34,11 @@ Capitulo? proximoCapitulo(int xp) {
   }
   return null;
 }
+
+// ---------- PARÁMETROS AJUSTABLES ----------
+// Alto de la barra de avance y redondeo de su tarjeta.
+const double altoBarraExperiencia = 10;
+const double radioTarjetaExperiencia = 14;
 
 class BarraExperiencia extends StatelessWidget {
   const BarraExperiencia({super.key});
@@ -60,35 +72,43 @@ class BarraExperiencia extends StatelessWidget {
       avance = meta <= anterior ? 1 : ((xp - anterior) / (meta - anterior)).clamp(0.0, 1.0).toDouble();
       falta = 'faltan ${meta - xp} para ${proximo.lugar.nombre}';
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Text('Explorador · $xp XP',
-                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colores.azul)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(falta,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Textos.secundario.copyWith(fontSize: 12)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 5),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: avance,
-            minHeight: 10,
-            color: Colores.ambar,
-            backgroundColor: Colores.linea,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      decoration: BoxDecoration(
+        color: Colores.cremaBanda,
+        borderRadius: BorderRadius.circular(radioTarjetaExperiencia),
+        border: Border.all(color: Colores.arenaPaleta),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Text('Explorador · $xp XP',
+                  style: Textos.cuerpoDestacado.copyWith(fontSize: 13)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(falta,
+                    textAlign: TextAlign.right,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Textos.pequeno),
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 7),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: avance,
+              minHeight: altoBarraExperiencia,
+              color: Colores.bosque,
+              backgroundColor: Colores.arenaPaleta,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

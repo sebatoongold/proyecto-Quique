@@ -1,8 +1,13 @@
 // ============================================================
 // observacion_screen.dart
 // Fecha: 19-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso F7.3 (el monitoreo pasa a ser del investigador)
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v2 — paso G5
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Textos visibles: "cinturón" pasa a "polerón" (la prenda del
+//    sistema). Los nombres internos (clases, claves guardadas) no
+//    cambian, para no perder datos.
 //
 // Herramienta del INVESTIGADOR (Configuración → Periodo de observación).
 // Es lo que antes estaba en el Resumen de hoy (F5), sacado del mundo
@@ -183,7 +188,7 @@ class _ObservacionScreenState extends State<ObservacionScreen> {
           const Text('Sin periodo en curso', style: Textos.tituloTarjeta),
           const SizedBox(height: 8),
           Text(
-            'Participante: ${codigo ?? 'ninguno'}. Con el cinturón puesto, inicia el periodo y '
+            'Participante: ${codigo ?? 'ninguno'}. Con el polerón puesto, inicia el periodo y '
             'deja que el niño siga con lo suyo. Mantén la pantalla encendida.',
             style: Textos.secundario,
           ),
@@ -217,7 +222,7 @@ class _ObservacionScreenState extends State<ObservacionScreen> {
           builder: (context, estado, _) => Text(
             estado == EstadoConexion.conectado
                 ? 'Grabando lecturas. El resultado se ve al terminar.'
-                : 'Sin conexión: este rato lo cubrirá la cola del cinturón.',
+                : 'Sin conexión: este rato lo cubrirá la cola del polerón.',
             style: Textos.secundario.copyWith(
               color: estado == EstadoConexion.conectado ? Colores.textoSecundario : Colores.ambar,
             ),

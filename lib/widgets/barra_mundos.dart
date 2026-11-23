@@ -1,23 +1,28 @@
 // ============================================================
 // barra_mundos.dart
 // Fecha: 19-10-2026
-// Proyecto: "La espalda no espera" — app Sóma
-// Versión: v5 — paso G4
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v6 — paso G5
 //
-// CAMBIOS v5 respecto a la v4:
-//  - PUERTA PARENTAL: si el dedo se mueve un poco, el reloj ya no se
-//    detiene. Antes se usaba un "toque" (que se cancela al mover el
-//    dedo); ahora se sigue al dedo directamente (Listener): el tiempo
-//    sigue sumando mientras el dedo esté DENTRO del cuarto de círculo, y
-//    solo se detiene al levantarlo o al salir de la esquina.
+// CAMBIOS v6 respecto a la v5:
+//  - Vuelve la BARRA INFERIOR CLÁSICA, de lado a lado, en vez de las dos
+//    esquinas (las esquinas tapaban contenido). Es más baja que los
+//    botones principales de las pantallas (`altoBarraMundos`) y va sobre
+//    Crema banda, con una línea arriba que la separa del fondo.
+//  - Cada mundo es una PÍLDORA: la del mundo activo va rellena de su
+//    color (niño = Bosque, apoderado = Azul noche); la otra, sin relleno.
+//  - El RELOJ de la puerta parental se conserva: ahora es el CONTORNO de
+//    la píldora del apoderado, que se va trazando desde arriba al centro,
+//    en el sentido del reloj, durante los 3 segundos.
+//  - Se conserva el seguimiento del dedo (G4): el reloj sigue mientras el
+//    dedo esté DENTRO de la mitad del apoderado; se detiene al levantarlo
+//    o al salir.
+//  - Ya no existe `espacioBajoEsquinas`: la barra va debajo de las
+//    pantallas (no encima), así que no tapa nada.
 //
-// La barra de mundos son DOS ESQUINAS (cuartos de círculo) encima de
-// las pantallas: a la izquierda el mundo niño y a la derecha el mundo
-// apoderado; la del mundo activo va rellena de su color. Las pantallas
-// dejan `espacioBajoEsquinas` libre abajo.
-// De apoderado a niño es un toque; un toque corto
-// en la esquina del apoderado muestra una pista para el adulto; cada
-// intento se anota en el registro de uso (corto / soltada / ok).
+// De apoderado a niño es un toque; un toque corto en la píldora del
+// apoderado muestra una pista para el adulto; cada intento se anota en el
+// registro de uso (corto / soltada / ok).
 // ============================================================
 
 import 'dart:math' as math;
@@ -31,14 +36,13 @@ import '../tema/colores.dart';
 // Cuánto hay que mantener presionado para entrar al mundo apoderado.
 // Más largo = más difícil para un niño entrar sin querer.
 const Duration duracionPuertaParental = Duration(seconds: 3);
-// Radio de cada esquina (cuarto de círculo), en puntos. Más grande =
-// más fácil de tocar y el relleno se ve más alrededor del dedo.
-const double radioEsquinaMundos = 116;
-// Espacio que las pantallas deben dejar libre abajo para que las
-// esquinas no tapen su contenido.
-const double espacioBajoEsquinas = radioEsquinaMundos - 20;
-// Grosor del arco que se llena como reloj en la puerta parental.
-const double grosorReloj = 9;
+// Alto de la barra (sin contar la barra de gestos del teléfono). Debe
+// quedar MÁS BAJA que los botones principales (92–104 en el inicio niño).
+const double altoBarraMundos = 66;
+// Margen entre el borde de cada mitad y su píldora.
+const double margenPildora = 8;
+// Grosor del contorno que se traza como reloj en la puerta parental.
+const double grosorReloj = 4;
 // Debajo de este avance (0..1), soltar cuenta como "toque corto".
 const double umbralToqueCorto = 0.15;
 
@@ -73,7 +77,7 @@ class _BarraMundosState extends State<BarraMundos> with SingleTickerProviderStat
     super.dispose();
   }
 
-  bool _presionando = false; // G4: hay un dedo sobre la puerta
+  bool _presionando = false; // hay un dedo sobre la puerta
 
   void _levantar() {
     if (!_presionando) return;
@@ -92,7 +96,7 @@ class _BarraMundosState extends State<BarraMundos> with SingleTickerProviderStat
         ..showSnackBar(
           SnackBar(
             content: Text(
-              'Para el apoderado: mantén presionada la esquina '
+              'Para el apoderado: mantén presionado «Apoderado» '
               '${duracionPuertaParental.inSeconds} segundos.',
             ),
             duration: const Duration(seconds: 2),
@@ -105,48 +109,46 @@ class _BarraMundosState extends State<BarraMundos> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     final enNino = widget.actual == Mundo.nino;
-    // Respeta la barra de gestos del teléfono: la esquina crece hacia abajo.
+    // Respeta la barra de gestos del teléfono.
     final abajo = MediaQuery.of(context).padding.bottom;
 
-    // Stack sin hijos normales: solo ocupa (y recibe toques en) las esquinas;
-    // el resto de la pantalla sigue tocándose como siempre.
-    return Stack(
-      children: [
-        Positioned(
-          left: 0,
-          bottom: 0,
-          child: _esquina(
-            izquierda: true,
-            abajo: abajo,
-            icono: Icons.child_care_rounded,
-            texto: 'Niño',
-            activa: enNino,
-            color: Colores.bosque,
-            alTocar: enNino ? null : () => widget.alCambiar(Mundo.nino),
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colores.cremaBanda,
+        border: Border(top: BorderSide(color: Colores.arenaPaleta, width: 1)),
+      ),
+      padding: EdgeInsets.only(bottom: abajo),
+      child: SizedBox(
+        height: altoBarraMundos,
+        child: Row(
+          children: [
+            Expanded(
+              child: _mitad(
+                icono: Icons.child_care_rounded,
+                texto: 'Niño',
+                activa: enNino,
+                color: Colores.bosque,
+                alTocar: enNino ? null : () => widget.alCambiar(Mundo.nino),
+              ),
+            ),
+            Expanded(
+              child: enNino
+                  ? _puertaParental()
+                  : _mitad(
+                      icono: Icons.person_rounded,
+                      texto: 'Apoderado',
+                      activa: true,
+                      color: Colores.azul,
+                    ),
+            ),
+          ],
         ),
-        Positioned(
-          right: 0,
-          bottom: 0,
-          child: enNino
-              ? _puertaParental(abajo)
-              : _esquina(
-                  izquierda: false,
-                  abajo: abajo,
-                  icono: Icons.person_rounded,
-                  texto: 'Apoderado',
-                  activa: true,
-                  color: Colores.azul,
-                ),
-        ),
-      ],
+      ),
     );
   }
 
-  /// Una esquina normal (sin puerta).
-  Widget _esquina({
-    required bool izquierda,
-    required double abajo,
+  /// Una mitad normal (sin puerta).
+  Widget _mitad({
     required IconData icono,
     required String texto,
     required bool activa,
@@ -156,112 +158,96 @@ class _BarraMundosState extends State<BarraMundos> with SingleTickerProviderStat
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: alTocar,
-      child: CustomPaint(
-        painter: _PintorEsquina(
-          izquierda: izquierda,
-          fondo: activa ? color : Colores.tarjeta,
-          borde: activa ? null : Colores.linea,
-        ),
-        child: _contenido(
-          izquierda: izquierda,
-          abajo: abajo,
-          icono: icono,
-          texto: texto,
-          color: activa ? Colores.tarjeta : Colores.textoSecundario,
-          negrita: activa,
+      child: Padding(
+        padding: const EdgeInsets.all(margenPildora),
+        child: CustomPaint(
+          painter: _PintorPildora(fondo: activa ? color : null),
+          child: _contenido(
+            icono: icono,
+            texto: texto,
+            color: activa ? Colores.cremaBanda : Colores.textoSecundario,
+            negrita: activa,
+          ),
         ),
       ),
     );
   }
 
-  /// Esquina del apoderado vista desde el mundo niño: hay que mantenerla
-  /// presionada; se llena como un reloj.
-  Widget _puertaParental(double abajo) {
-    final lado = radioEsquinaMundos + abajo; // la esquina es un cuadrado de este lado
-    return Listener(
-      behavior: HitTestBehavior.opaque,
-      onPointerDown: (_) {
-        _presionando = true;
-        _puerta.forward();
-      },
-      // Mientras el dedo siga dentro del cuarto de círculo, el reloj sigue.
-      onPointerMove: (e) {
-        if (!_presionando) return;
-        final dx = lado - e.localPosition.dx; // distancia a la esquina de abajo a la derecha
-        final dy = lado - e.localPosition.dy;
-        final dentro = dx >= 0 && dy >= 0 && dx * dx + dy * dy <= lado * lado;
-        if (!dentro) _levantar();
-      },
-      onPointerUp: (_) => _levantar(),
-      onPointerCancel: (_) => _levantar(),
-      child: AnimatedBuilder(
-        animation: _puerta,
-        builder: (context, _) {
-          return CustomPaint(
-            painter: _PintorEsquina(
-              izquierda: false,
-              fondo: Colores.tarjeta,
-              borde: Colores.linea,
-              avance: _puerta.value,
-              colorAvance: Colores.azul,
-              mostrarPista: true,
+  /// Mitad del apoderado vista desde el mundo niño: hay que mantenerla
+  /// presionada; su contorno se traza como un reloj.
+  Widget _puertaParental() {
+    return LayoutBuilder(
+      builder: (context, caja) {
+        final ancho = caja.maxWidth;
+        final alto = caja.maxHeight;
+        return Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (_) {
+            _presionando = true;
+            _puerta.forward();
+          },
+          // Mientras el dedo siga dentro de esta mitad, el reloj sigue.
+          onPointerMove: (e) {
+            if (!_presionando) return;
+            final p = e.localPosition;
+            final dentro = p.dx >= 0 && p.dy >= 0 && p.dx <= ancho && p.dy <= alto;
+            if (!dentro) _levantar();
+          },
+          onPointerUp: (_) => _levantar(),
+          onPointerCancel: (_) => _levantar(),
+          child: Padding(
+            padding: const EdgeInsets.all(margenPildora),
+            child: AnimatedBuilder(
+              animation: _puerta,
+              builder: (context, _) {
+                return CustomPaint(
+                  painter: _PintorPildora(
+                    avance: _puerta.value,
+                    colorAvance: Colores.azul,
+                    mostrarPista: true,
+                  ),
+                  child: _contenido(
+                    icono: Icons.lock_rounded,
+                    texto: 'Apoderado',
+                    color: Colores.textoSecundario,
+                    negrita: false,
+                  ),
+                );
+              },
             ),
-            child: _contenido(
-              izquierda: false,
-              abajo: abajo,
-              icono: Icons.lock_rounded,
-              texto: 'Apoderado',
-              color: Colores.textoSecundario,
-              negrita: false,
-            ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
-  /// Ícono y etiqueta, cerca del centro del cuarto de círculo.
+  /// Ícono y etiqueta en una fila, centrados.
   Widget _contenido({
-    required bool izquierda,
-    required double abajo,
     required IconData icono,
     required String texto,
     required Color color,
     required bool negrita,
   }) {
-    return SizedBox(
-      // Cuadrado: el cuarto de círculo crece con la barra de gestos.
-      width: radioEsquinaMundos + abajo,
-      height: radioEsquinaMundos + abajo,
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: izquierda ? 18 : 40,
-          right: izquierda ? 40 : 18,
-          top: 40,
-          bottom: abajo + 14,
-        ),
-        child: Align(
-          alignment: izquierda ? Alignment.bottomLeft : Alignment.bottomRight,
-          // Si el texto del teléfono es grande, se achica en vez de cortarse.
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: izquierda ? Alignment.bottomLeft : Alignment.bottomRight,
-            child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: izquierda ? CrossAxisAlignment.start : CrossAxisAlignment.end,
-          children: [
-            Icon(icono, color: color, size: 28),
-            const SizedBox(height: 2),
-            Text(
-              texto,
-              style: TextStyle(
-                fontSize: 12,
-                color: color,
-                fontWeight: negrita ? FontWeight.w700 : FontWeight.w500,
+    return Center(
+      // Si el texto del teléfono es grande, se achica en vez de cortarse.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icono, color: color, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                texto,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: color,
+                  fontWeight: negrita ? FontWeight.w600 : FontWeight.w500,
+                ),
               ),
-            ),
-          ],
-            ),
+            ],
           ),
         ),
       ),
@@ -269,79 +255,59 @@ class _BarraMundosState extends State<BarraMundos> with SingleTickerProviderStat
   }
 }
 
-/// Dibuja un cuarto de círculo con centro en la esquina de abajo
-/// (izquierda o derecha) y, si hay `avance`, el reloj en el contorno:
-/// un arco grueso sobre el borde curvo, desde abajo hasta el lado.
-class _PintorEsquina extends CustomPainter {
-  final bool izquierda;
-  final Color fondo;
-  final Color? borde;
+/// Dibuja una píldora (rectángulo de puntas redondas) y, si hay `avance`,
+/// el reloj en su contorno: parte arriba al centro y avanza en el sentido
+/// del reloj.
+class _PintorPildora extends CustomPainter {
+  final Color? fondo; // null = sin relleno
   final double avance; // 0..1
   final Color colorAvance;
-  final bool mostrarPista; // arco tenue con el recorrido del reloj
+  final bool mostrarPista; // contorno tenue con el recorrido del reloj
 
-  _PintorEsquina({
-    required this.izquierda,
-    required this.fondo,
-    this.borde,
+  _PintorPildora({
+    this.fondo,
     this.avance = 0,
     this.colorAvance = Colores.azul,
     this.mostrarPista = false,
   });
 
+  /// Contorno de la píldora empezando arriba al centro, en sentido horario.
+  static Path _contorno(Rect r) {
+    final radio = r.height / 2;
+    return Path()
+      ..moveTo(r.center.dx, r.top)
+      ..lineTo(r.right - radio, r.top)
+      ..arcTo(Rect.fromCircle(center: Offset(r.right - radio, r.center.dy), radius: radio), -math.pi / 2, math.pi, false)
+      ..lineTo(r.left + radio, r.bottom)
+      ..arcTo(Rect.fromCircle(center: Offset(r.left + radio, r.center.dy), radius: radio), math.pi / 2, math.pi, false)
+      ..close();
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    // Centro del círculo: la esquina de abajo. El radio cubre el alto
-    // completo (incluida la barra de gestos del teléfono).
-    final centro = Offset(izquierda ? 0 : size.width, size.height);
-    final radio = size.height;
-    final rect = Rect.fromCircle(center: centro, radius: radio);
-    // Ángulos de Flutter: 0 = derecha, −π/2 = arriba, π = izquierda.
-    // Esquina izquierda: de −π/2 (arriba) a 0 (derecha).
-    // Esquina derecha:   de π (izquierda) a 3π/2 (arriba).
-    final inicio = izquierda ? -math.pi / 2 : math.pi;
-    const barrido = math.pi / 2;
+    final rect = (Offset.zero & size).deflate(grosorReloj / 2);
+    final contorno = _contorno(rect);
 
-    final cuarto = Path()
-      ..moveTo(centro.dx, centro.dy)
-      ..arcTo(rect, inicio, barrido, false)
-      ..close();
-    canvas.drawShadow(cuarto, Colors.black, 3, false);
-    canvas.drawPath(cuarto, Paint()..color = fondo);
-    if (borde != null) {
-      canvas.drawArc(
-        rect.deflate(0.75),
-        inicio,
-        barrido,
-        false,
-        Paint()
-          ..color = borde!
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
-      );
-    }
+    if (fondo != null) canvas.drawPath(contorno, Paint()..color = fondo!);
 
-    // Reloj en el CONTORNO (solo la esquina derecha lo usa): un arco
-    // grueso sobre el borde curvo que avanza desde abajo (horizontal,
-    // hacia la izquierda) hasta el lado (vertical), como las agujas del
-    // reloj. Debajo, el mismo arco tenue: el recorrido que falta.
     if (avance > 0 || mostrarPista) {
-      final rectArco = rect.deflate(grosorReloj / 2);
       final trazo = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = grosorReloj
         ..strokeCap = StrokeCap.round;
       if (mostrarPista) {
-        canvas.drawArc(rectArco, math.pi, barrido, false, trazo..color = colorAvance.withValues(alpha: 0.18));
+        canvas.drawPath(contorno, trazo..color = colorAvance.withValues(alpha: 0.18));
       }
       final a = avance.clamp(0.0, 1.0).toDouble();
       if (a > 0) {
-        canvas.drawArc(rectArco, math.pi, barrido * a, false, trazo..color = colorAvance);
+        for (final m in contorno.computeMetrics()) {
+          canvas.drawPath(m.extractPath(0, m.length * a), trazo..color = colorAvance);
+        }
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _PintorEsquina old) =>
-      old.avance != avance || old.fondo != fondo || old.borde != borde || old.izquierda != izquierda;
+  bool shouldRepaint(covariant _PintorPildora old) =>
+      old.avance != avance || old.fondo != fondo || old.mostrarPista != mostrarPista;
 }

@@ -1,16 +1,14 @@
 // ============================================================
 // inicio_nino.dart
 // Fecha: 19-10-2026
-// Proyecto: "La espalda no espera" — app Sóma
-// Versión: v9 — paso G4
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v10 — paso G5
 //
-// CAMBIOS v9 respecto a la v8:
-//  - ARRIBA queda solo Sóma en su escenario (con su globo).
-//  - ABAJO, en orden: la barra de experiencia; ACTIVIDADES grande y
-//    destacada (`altoTarjetaActividades`, del tamaño de la actividad
-//    sugerida del apoderado), y debajo HISTORIA y LOGROS lado a lado,
-//    en dos columnas (`altoTarjetasPequenas`).
-//  - La parte de abajo tiene alto fijo; el escenario toma el resto.
+// CAMBIOS v10 respecto a la v9:
+//  - La barra de mundos ya no va encima de la pantalla: se quita el
+//    espacio extra que se dejaba abajo para las esquinas.
+//  - La frase de Sóma usa el estilo Textos.fraseSoma; otros textos,
+//    estilos con nombre de tema_app.dart.
 //
 // ============================================================
 
@@ -25,7 +23,6 @@ import '../../servicios/servicio_progreso.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/barra_experiencia.dart';
-import '../../widgets/barra_mundos.dart';
 import '../../widgets/escenario.dart';
 import 'actividades_screen.dart';
 import 'historia_screen.dart';
@@ -109,7 +106,7 @@ class InicioNino extends StatelessWidget {
               ),
               // --- Abajo: experiencia, Actividades y, debajo, Historia | Logros ---
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, espacioBajoEsquinas + 12),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -205,7 +202,7 @@ class InicioNino extends StatelessWidget {
                     Text(subtitulo,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, color: Colores.textoSecundario)),
+                        style: Textos.pequeno),
                   ],
                 ),
               ),
@@ -230,7 +227,7 @@ class InicioNino extends StatelessWidget {
           color: Colores.tarjeta,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Text(frase, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colores.azul)),
+        child: Text(frase, style: Textos.fraseSoma),
       ),
     );
   }

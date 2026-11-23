@@ -1,14 +1,13 @@
 // ============================================================
 // monitoreo_datos_screen.dart
 // Fecha: 18-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso F7.2
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v3 — paso G5
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Cada criterio dice cuántos episodios se RECUPERARON del cinturón
-//    (cortes de conexión).
-//  - VALIDACIÓN: con el criterio que usó el cinturón, cuántos episodios
-//    registró él con conexión vs. cuántos calculó la app.
+// CAMBIOS v3 respecto a la v2:
+//  - Textos visibles: "cinturón" pasa a "polerón" (la prenda del
+//    sistema). Los nombres internos (clases, claves guardadas) no
+//    cambian, para no perder datos.
 //
 // Herramienta del INVESTIGADOR (Configuración → Datos de prueba:
 // monitoreo). Para cada sesión del participante activo muestra, lado a
@@ -144,7 +143,7 @@ class _MonitoreoDatosScreenState extends State<MonitoreoDatosScreen> {
             style: Textos.secundario.copyWith(color: Colores.bosque),
           ),
           const Divider(height: 20, color: Colores.linea),
-          _criterio('Fijo (umbral del cinturón)', fijo),
+          _criterio('Fijo (umbral del polerón)', fijo),
           const SizedBox(height: 10),
           if (cal == null)
             const Text('Calibrado: el participante no tenía calibración en esta sesión.',
@@ -154,10 +153,10 @@ class _MonitoreoDatosScreenState extends State<MonitoreoDatosScreen> {
           const Divider(height: 20, color: Colores.linea),
           Text(
             validacion == null
-                ? 'Validación: el cinturón no registró episodios en esta sesión '
+                ? 'Validación: el polerón no registró episodios en esta sesión '
                     '(o aún no se sincroniza su cola).'
                 : 'Validación (${validacion.criterio == Criterio.fijo ? 'fijo' : 'calibrado'}, con conexión): '
-                    'el cinturón registró ${validacion.cinturon} · la app calculó ${validacion.app}'
+                    'el polerón registró ${validacion.cinturon} · la app calculó ${validacion.app}'
                     '${validacion.cinturon == validacion.app ? ' ✓' : ''}',
             style: Textos.secundario.copyWith(color: Colores.azul),
           ),
@@ -172,8 +171,8 @@ class _MonitoreoDatosScreenState extends State<MonitoreoDatosScreen> {
       children: [
         Text(nombre, style: Textos.cuerpoDestacado),
         Text(
-          '${r.veces} veces${r.vecesDelCinturon > 0 ? ' (${r.vecesDelCinturon} del cinturón, en cortes)' : ''} · en mala postura ${_t(r.msMalaPostura)} · la más larga ${_t(r.msMasLargo)}\n'
-          'Adelante ${_t(r.msAdelante)} · lateral ${_t(r.msLateral)} · ambos ${_t(r.msAmbos)}',
+          '${r.veces} veces${r.vecesDelCinturon > 0 ? ' (${r.vecesDelCinturon} del polerón, en cortes)' : ''} · en mala postura ${_t(r.msMalaPostura)} · la más larga ${_t(r.msMasLargo)}\n'
+          'adelante ${_t(r.msAdelante)} · lateral ${_t(r.msLateral)} · ambos ${_t(r.msAmbos)}',
           style: Textos.secundario,
         ),
       ],

@@ -1,12 +1,15 @@
 // ============================================================
 // inicio_apoderado.dart
 // Fecha: 18-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v10 — paso G4
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v11 — paso G5
 //
-// CAMBIOS v10 respecto a la v9:
-//  - La actividad sugerida entrega SU JUEGO al tocarla
-//    (`alIrAlMundoNino(juego)`): la app pasa al mundo niño y lo abre.
+// CAMBIOS v11 respecto a la v10:
+//  - La barra de mundos ya no va encima de la pantalla: se quita el
+//    espacio extra que se dejaba abajo para las esquinas.
+//  - Textos visibles: "cinturón" pasa a "polerón" (la prenda del
+//    sistema). Los nombres internos (clases, claves guardadas) no
+//    cambian, para no perder datos.
 //
 // Inicio del apoderado: encabezado, avisos (solo si hay problema),
 // alertas de hoy, actividad sugerida e Historial.
@@ -22,7 +25,6 @@ import '../../servicios/servicio_cinturon.dart';
 import '../../servicios/servicio_participantes.dart';
 import '../../tema/colores.dart';
 import '../../tema/tema_app.dart';
-import '../../widgets/barra_mundos.dart';
 import '../../widgets/figura_tu.dart';
 import '../../widgets/tarjeta_resumen_hoy.dart';
 import 'configuracion_screen.dart';
@@ -63,7 +65,7 @@ class InicioApoderado extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24 + espacioBajoEsquinas),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               children: [
                 // --- Encabezado ---
                 Row(
@@ -117,8 +119,8 @@ class InicioApoderado extends StatelessWidget {
           builder: (context, ultima, _) => _aviso(
             icono: Icons.bluetooth_disabled_rounded,
             texto: ultima == null
-                ? 'Cinturón sin conexión'
-                : 'Cinturón sin conexión · actualizado a las ${_hora(ultima)}',
+                ? 'Polerón sin conexión'
+                : 'Polerón sin conexión · actualizado a las ${_hora(ultima)}',
           ),
         );
       },

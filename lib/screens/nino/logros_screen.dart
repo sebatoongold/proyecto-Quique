@@ -1,8 +1,16 @@
 // ============================================================
 // logros_screen.dart
 // Fecha: 23-11-2026
-// Proyecto: "La espalda no espera" — app Sóma
-// Versión: v1 — paso G3 (historia y experiencia)
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v2 — paso G5
+//
+// CAMBIOS v2 respecto a la v1:
+//  - El PIE de cada foto ocupa siempre DOS LÍNEAS (`lineasPieFoto`): si es
+//    más corto, deja el espacio; si es más largo, termina en "…". Así
+//    todas las fotos miden lo mismo. El título, una sola línea.
+//  - Textos bloqueados en Gris pizarra (el Gris lomo no se usa para
+//    texto). Insignias ganadas con borde Bosque y fondo Matorral (el
+//    ámbar queda solo para el estado de Sóma).
 //
 // LOGROS: el álbum de explorador, en tres pestañas.
 //  - FOTOS: una por animal, se gana ayudando a Sóma en su capítulo.
@@ -21,6 +29,12 @@ import '../../tema/tema_app.dart';
 import '../../widgets/escenario.dart';
 import '../../widgets/icono_animal.dart';
 
+// ---------- PARÁMETROS AJUSTABLES ----------
+// Líneas fijas del pie de cada foto, y su tamaño de letra.
+const int lineasPieFoto = 2;
+const double tamanoPieFoto = 11;
+const double altoLineaPieFoto = 1.3;
+
 class LogrosScreen extends StatelessWidget {
   const LogrosScreen({super.key});
 
@@ -38,7 +52,7 @@ class LogrosScreen extends StatelessWidget {
           title: Text('Álbum de explorador · ${progreso.xp} XP'),
           bottom: const TabBar(
             labelColor: Colores.azul,
-            indicatorColor: Colores.ambar,
+            indicatorColor: Colores.bosque,
             tabs: [Tab(text: 'Fotos'), Tab(text: 'Postales'), Tab(text: 'Insignias')],
           ),
         ),
@@ -137,15 +151,23 @@ class LogrosScreen extends StatelessWidget {
           const SizedBox(height: 6),
           Text(tiene ? titulo : '¿?',
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   fontFamily: fuenteTitulos,
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: tiene ? Colores.azul : Colores.neutro)),
-          Text(tiene ? pie : falta,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              style: Textos.secundario.copyWith(fontSize: 11)),
+                  color: tiene ? Colores.azul : Colores.textoSecundario)),
+          // Alto fijo de dos líneas, aunque el texto sea más corto.
+          SizedBox(
+            height: tamanoPieFoto * altoLineaPieFoto * lineasPieFoto,
+            child: Text(tiene ? pie : falta,
+                textAlign: TextAlign.center,
+                maxLines: lineasPieFoto,
+                overflow: TextOverflow.ellipsis,
+                textHeightBehavior: const TextHeightBehavior(applyHeightToFirstAscent: false),
+                style: Textos.secundario.copyWith(fontSize: tamanoPieFoto, height: altoLineaPieFoto)),
+          ),
         ],
       ),
     );
@@ -158,15 +180,15 @@ class LogrosScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: tiene ? Colores.tarjeta : Colors.transparent,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: tiene ? Colores.ambar : Colores.linea, width: tiene ? 2 : 1.5),
+        border: Border.all(color: tiene ? Colores.bosque : Colores.linea, width: tiene ? 2 : 1.5),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 22,
-            backgroundColor: tiene ? Colores.ambar : Colores.fondo,
+            backgroundColor: tiene ? Colores.matorral : Colores.fondo,
             child: Icon(tiene ? Icons.military_tech_rounded : Icons.lock_rounded,
-                color: tiene ? Colores.azul : Colores.neutro),
+                color: tiene ? Colores.azul : Colores.textoSecundario),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -175,7 +197,7 @@ class LogrosScreen extends StatelessWidget {
               children: [
                 Text(i.nombre,
                     style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w700, color: tiene ? Colores.azul : Colores.neutro)),
+                        fontSize: 16, fontWeight: FontWeight.w700, color: tiene ? Colores.azul : Colores.textoSecundario)),
                 Text(i.como, style: Textos.secundario.copyWith(fontSize: 12.5)),
               ],
             ),

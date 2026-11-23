@@ -1,13 +1,13 @@
 // ============================================================
 // pantalla_principal.dart
 // Fecha: 19-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v4 — paso G4
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v5 — paso G5
 //
-// CAMBIOS v4 respecto a la v3:
-//  - La ACTIVIDAD SUGERIDA del apoderado ya no solo pasa al mundo niño:
-//    pasa y ABRE ESE JUEGO directamente (registro de uso: 'juego_desde'
-//    = 'actividad_sugerida'). Al terminar, el niño queda en su inicio.
+// CAMBIOS v5 respecto a la v4:
+//  - La barra de mundos vuelve a ir DEBAJO de las pantallas (una
+//    columna), no encima: ya no tapa contenido. Las pantallas no
+//    reciben el margen de la barra de gestos (lo maneja la barra).
 //
 // Contiene los dos mundos y la barra inferior para cambiar entre ellos.
 // DECISIONES:
@@ -59,22 +59,25 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
+      body: Column(
         children: [
-          IndexedStack(
-            index: _mundo == Mundo.apoderado ? 0 : 1,
-            children: [
-              // Cruce entre mundos: la actividad sugerida pasa al mundo niño y
-              // abre ese juego (va del adulto al niño, no necesita puerta).
-              InicioApoderado(alIrAlMundoNino: _abrirSugerida),
-              const InicioNino(),
-            ],
+          Expanded(
+            // La barra de gestos del teléfono queda bajo la barra de mundos.
+            child: MediaQuery.removePadding(
+              context: context,
+              removeBottom: true,
+              child: IndexedStack(
+                index: _mundo == Mundo.apoderado ? 0 : 1,
+                children: [
+                  // Cruce entre mundos: la actividad sugerida pasa al mundo niño y
+                  // abre ese juego (va del adulto al niño, no necesita puerta).
+                  InicioApoderado(alIrAlMundoNino: _abrirSugerida),
+                  const InicioNino(),
+                ],
+              ),
+            ),
           ),
-          // Las dos esquinas de la barra de mundos, encima de todo. Solo
-          // reciben toques en las esquinas; el resto pasa a la pantalla.
-          Positioned.fill(
-            child: BarraMundos(actual: _mundo, alCambiar: (m) => _cambiar(m)),
-          ),
+          BarraMundos(actual: _mundo, alCambiar: (m) => _cambiar(m)),
         ],
       ),
     );

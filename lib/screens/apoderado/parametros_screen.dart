@@ -1,14 +1,13 @@
 // ============================================================
 // parametros_screen.dart
 // Fecha: 19-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v10 — paso G3
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v11 — paso G5
 //
-// CAMBIOS v10 respecto a la v9:
-//  - Nueva sección "Historia y experiencia" (antes de "Investigador"):
-//    cuánta experiencia pide cada capítulo, y un botón para reiniciar el
-//    progreso de explorador del participante activo (para empezar cada
-//    sesión de testeo desde el prólogo).
+// CAMBIOS v11 respecto a la v10:
+//  - Textos visibles: "cinturón" pasa a "polerón" (la prenda del
+//    sistema). Los nombres internos (clases, claves guardadas) no
+//    cambian, para no perder datos.
 //
 // Herramienta del INVESTIGADOR (Configuración → Parámetros del juego):
 // cambia cómo se comporta el juego sin recompilar, para probar
@@ -301,13 +300,13 @@ class _ParametrosScreenState extends State<ParametrosScreen> {
                 alCambiar: (v, g) => _cambiar(_p.copyWith(amplificacion: v), guardar: g),
               ),
 
-              _seccion('Cinturón'),
+              _seccion('Polerón'),
               _interruptor(
-                titulo: 'El cinturón registra con la calibración',
+                titulo: 'El polerón registra con la calibración',
                 ayuda: _p.cinturonCalibrado
                     ? 'Sí: al elegir un participante calibrado, se le envía su postura neutral al '
-                        'cinturón, que registra sus episodios desde ahí. Es lo que ve el apoderado.'
-                    : 'No: el cinturón registra siempre con el umbral fijo. Es lo que ve el apoderado.',
+                        'polerón, que registra sus episodios desde ahí. Es lo que ve el apoderado.'
+                    : 'No: el polerón registra siempre con el umbral fijo. Es lo que ve el apoderado.',
                 valor: _p.cinturonCalibrado,
                 alCambiar: (v) => _cambiar(_p.copyWith(cinturonCalibrado: v), guardar: true),
               ),

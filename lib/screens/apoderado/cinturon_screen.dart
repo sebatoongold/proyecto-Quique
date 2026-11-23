@@ -1,8 +1,13 @@
 // ============================================================
 // cinturon_screen.dart
 // Fecha: 18-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso F7.2 (el cinturón y su cola)
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v2 — paso G5
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Textos visibles: "cinturón" pasa a "polerón" (la prenda del
+//    sistema). Los nombres internos (clases, claves guardadas) no
+//    cambian, para no perder datos.
 //
 // Herramienta del INVESTIGADOR (Configuración → Cinturón):
 //  - Conexión y a quién está ASIGNADO el cinturón.
@@ -65,9 +70,9 @@ class _CinturonScreenState extends State<CinturonScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('¿Vaciar la cola del cinturón?'),
+        title: const Text('¿Vaciar la cola del polerón?'),
         content: const Text(
-          'Se borran en el cinturón los episodios que todavía no se han leído, '
+          'Se borran en el polerón los episodios que todavía no se han leído, '
           'SIN guardarlos. Úsalo para limpiar las pruebas antes del testeo.',
         ),
         actions: [
@@ -82,7 +87,7 @@ class _CinturonScreenState extends State<CinturonScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cinturón')),
+      appBar: AppBar(title: const Text('Polerón')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
@@ -104,7 +109,7 @@ class _CinturonScreenState extends State<CinturonScreen> {
                     foregroundColor: Colores.azul,
                   ),
                   icon: const Icon(Icons.delete_sweep_rounded),
-                  label: const Text('Vaciar la cola del cinturón'),
+                  label: const Text('Vaciar la cola del polerón'),
                   onPressed: _ble.tieneRegistro && !_trabajando ? _vaciar : null,
                 ),
               ],
@@ -136,7 +141,7 @@ class _CinturonScreenState extends State<CinturonScreen> {
           Expanded(
             child: Text(
               !conectado
-                  ? 'Buscando el cinturón…'
+                  ? 'Buscando el polerón…'
                   : (conCola
                       ? 'Conectado · ${_cinturon.estado.value}'
                       : 'Conectado, pero este firmware no tiene cola de episodios'),
@@ -153,7 +158,7 @@ class _CinturonScreenState extends State<CinturonScreen> {
     final esperado = _cinturon.idCalEsperado();
     final DatosPostura? vivo = _ble.datos.value;
     final ConfigCinturon? cfg = _cinturon.config.value;
-    final cargado = vivo?.cal ?? cfg?.idCal; // lo que el cinturón dice tener
+    final cargado = vivo?.cal ?? cfg?.idCal; // lo que el polerón dice tener
     final coincide = cargado != null &&
         cargado == esperado &&
         _cinturon.asignadoA.value == activo?.codigo &&
@@ -181,13 +186,13 @@ class _CinturonScreenState extends State<CinturonScreen> {
           Text(
             !_ble.conectado
                 ? 'Se enviará al conectarse.'
-                : (coincide ? '✓ El cinturón está listo para este participante.' : 'No coincide todavía.'),
+                : (coincide ? '✓ El polerón está listo para este participante.' : 'No coincide todavía.'),
             style: Textos.cuerpoDestacado.copyWith(color: coincide ? Colores.comodo : Colores.ambar),
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
             icon: const Icon(Icons.send_rounded),
-            label: const Text('Enviar al cinturón'),
+            label: const Text('Enviar al polerón'),
             onPressed: _ble.tieneRegistro && !_trabajando ? () => _hacer(_cinturon.asignarActivo) : null,
           ),
         ],
@@ -206,7 +211,7 @@ class _CinturonScreenState extends State<CinturonScreen> {
         children: [
           const Text('Cola de episodios', style: Textos.tituloTarjeta),
           const SizedBox(height: 8),
-          Text('Pendientes en el cinturón: ${cfg?.pendientes ?? '—'}', style: Textos.cuerpo),
+          Text('Pendientes en el polerón: ${cfg?.pendientes ?? '—'}', style: Textos.cuerpo),
           Text(
             'Recibidos en la app: ${_cinturon.episodios.value.length} en total · '
             '$delActivo de ${activo?.codigo ?? 'sin participante'}',

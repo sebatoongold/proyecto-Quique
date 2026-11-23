@@ -1,20 +1,17 @@
 // ============================================================
 // ejecucion_screen.dart
 // Fecha: 19-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v13 — paso G3 (historia y experiencia)
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v14 — paso G5
 //
-// CAMBIOS v13 respecto a la v12:
-//  - EXPERIENCIA: al terminar una actividad (llegar al cierre) se
-//    registra en el progreso de explorador (servicio_progreso.dart). El
-//    cierre muestra "+N XP de explorador" y, si corresponde, la FOTO
-//    nueva, los CAPÍTULOS que se abrieron y las INSIGNIAS ganadas.
-//  - `fotoDe`: si el juego se abrió desde un capítulo ("Ayudar a
-//    Sóma"), el animal cuya foto se gana al lograr su postura.
-//  - La "racha" de días seguidos se reemplaza por los DÍAS EXPLORANDO
-//    ESTA SEMANA (sin castigo: no se rompe si un día no juega).
-//  - Los botones "Volver al río" dicen "Volver con Sóma" (cierre, ayuda
-//    y pantalla sin cinturón).
+// CAMBIOS v14 respecto a la v13:
+//  - Colores sueltos reemplazados por la paleta ajustada (fondo de la
+//    barra de partida: Arena; etiqueta de días: Crema banda).
+//  - Varios textos usan estilos con nombre de tema_app.dart
+//    (tituloPantalla, tituloTarjeta, cuerpoDestacado, pequeno).
+//  - Textos visibles: "cinturón" pasa a "polerón" (la prenda del
+//    sistema). Los nombres internos (clases, claves guardadas) no
+//    cambian, para no perder datos.
 //
 // Flujo completo: flujo_nino_actividad_guiada_v1.svg. Sigue pendiente:
 // el botón "Escuchar" (requiere una dependencia de voz) y las
@@ -228,7 +225,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           ..ceroLateral = 0
           ..tipoCero = 'fijo';
         _registro.evento('cero', dato: 'fijo');
-        _esperarCinturon(); // sin fase de partida, pero sí con cinturón
+        _esperarCinturon(); // sin fase de partida, pero sí con polerón
         return;
       }
       if (tipo == 'calibrado' && cal != null) {
@@ -254,7 +251,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         ..ceroLateral = cal.lateral
         ..tipoCero = 'calibrado';
       _registro.evento('cero', dato: 'calibrado');
-      _esperarCinturon(); // sin fase de partida, pero sí con cinturón
+      _esperarCinturon(); // sin fase de partida, pero sí con polerón
     } else {
       _registro.tipoCero = _p.ceroCalibrado ? 'automatico_sin_calibracion' : 'automatico';
       _fase = _Fase.partida;
@@ -693,9 +690,9 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         icon: const Icon(Icons.family_restroom_rounded, size: 40, color: Colores.azul),
         title: const Text('Para el adulto'),
         content: const Text(
-          '1. Revisa que el cinturón esté encendido.\n'
+          '1. Revisa que el polerón esté encendido.\n'
           '2. Revisa que el Bluetooth del teléfono esté activado.\n'
-          '3. Acerca el teléfono al cinturón.\n\n'
+          '3. Acerca el teléfono al polerón.\n\n'
           'La app se conecta sola apenas lo encuentra.',
         ),
         actions: [
@@ -857,7 +854,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(grande,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colores.azul)),
+              style: Textos.tituloPantalla),
           if (chico.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(chico, style: Textos.secundario.copyWith(fontSize: 15)),
@@ -896,10 +893,10 @@ class _EjecucionScreenState extends State<EjecucionScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(animal.llamado,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colores.azul)),
+                    style: Textos.tituloPantalla),
                 const SizedBox(height: 2),
                 Text(_pose.instruccion,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colores.azul)),
+                    style: Textos.cuerpoDestacado),
                 if (_pose.detalle.isNotEmpty)
                   Text(_pose.detalle, style: Textos.secundario.copyWith(fontSize: 14)),
               ],
@@ -914,7 +911,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
     switch (_fase) {
       case _Fase.partida:
         if (_explicacionPendiente) {
-          return _tarjetaTexto('¡Prepárate para jugar!', 'Empezamos apenas se conecte tu cinturón.');
+          return _tarjetaTexto('¡Prepárate para jugar!', 'Empezamos apenas se conecte tu polerón.');
         }
         return _tarjetaTexto('Siéntate derecho y quédate quieto',
             'Así Sóma conoce tu postura cómoda.');
@@ -1067,7 +1064,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                 'lado: falta ${_errorLateral.toStringAsFixed(0)} (±${_pose.margenLateral.toStringAsFixed(0)})   '
                 'adelante: falta ${_errorAdelante.toStringAsFixed(0)}'
                 '${_pose.usaRango ? ' (zona ${_pose.adelanteDesde?.toStringAsFixed(0) ?? '−∞'}…${_pose.adelanteHasta?.toStringAsFixed(0) ?? '∞'})' : _pose.margenAdelante == null ? ' (no cuenta)' : ' (±${_pose.margenAdelante!.toStringAsFixed(0)})'}',
-                style: const TextStyle(fontSize: 11, color: Colores.textoSecundario),
+                style: Textos.pequeno,
               ),
             ),
         ],
@@ -1090,7 +1087,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
           const Icon(Icons.bluetooth_searching_rounded, size: 56, color: Colores.rio),
           const SizedBox(height: 16),
           const Text(
-            '¡Necesito tu cinturón para jugar!',
+            '¡Necesito tu polerón para jugar!',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colores.azul),
           ),
@@ -1179,7 +1176,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
               border: Border.all(color: Colores.linea),
             ),
             child: Text(frase,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colores.azul)),
+                style: Textos.tituloTarjeta),
           ),
         ),
       ],
@@ -1200,7 +1197,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
             value: valor,
             minHeight: 24,
             color: enPartida ? Colores.comodo : Colores.rio,
-            backgroundColor: const Color(0xFFE3EBF2),
+            backgroundColor: Colores.arenaPaleta,
           ),
         ),
         const SizedBox(height: 8),
@@ -1225,7 +1222,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(texto,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colores.azul)),
+                        style: Textos.cuerpoDestacado),
                   ),
                 ],
               ),
@@ -1280,7 +1277,7 @@ class _EjecucionScreenState extends State<EjecucionScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFEEF0DE),
+                color: Colores.cremaBanda,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(

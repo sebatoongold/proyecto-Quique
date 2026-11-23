@@ -1,8 +1,13 @@
 // ============================================================
 // calibracion_screen.dart
 // Fecha: 18-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v1 — paso F3 (calibración con botón)
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v2 — paso G5
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Textos visibles: "cinturón" pasa a "polerón" (la prenda del
+//    sistema). Los nombres internos (clases, claves guardadas) no
+//    cambian, para no perder datos.
 //
 // Mide la POSTURA NEUTRAL de un participante y la guarda en su perfil.
 // Lo maneja el INVESTIGADOR, con el niño sentado y el cinturón puesto.
@@ -257,7 +262,7 @@ class _CalibracionScreenState extends State<CalibracionScreen> {
             Icon(Icons.bluetooth_searching_rounded, color: Colores.ambar),
             SizedBox(width: 12),
             Expanded(
-              child: Text('Buscando el cinturón… La calibración necesita la conexión.',
+              child: Text('Buscando el polerón… La calibración necesita la conexión.',
                   style: Textos.cuerpo),
             ),
           ],
@@ -312,7 +317,7 @@ class _CalibracionScreenState extends State<CalibracionScreen> {
       const SizedBox(height: 14),
       _tarjeta(
         child: const Text(
-          'Con el niño sentado y el cinturón puesto: dile la frase, y cuando esté '
+          'Con el niño sentado y el polerón puesto: dile la frase, y cuando esté '
           'listo presiona Empezar. Habrá una cuenta regresiva y luego unos '
           'segundos en que debe quedarse quieto.',
           style: Textos.secundario,
@@ -365,7 +370,7 @@ class _CalibracionScreenState extends State<CalibracionScreen> {
         style: Textos.secundario,
       ),
       if (d != null)
-        Text('Ahora: adelante ${d.adelante} · lado ${d.lateral}',
+        Text('ahora: adelante ${d.adelante} · lado ${d.lateral}',
             textAlign: TextAlign.center, style: Textos.secundario),
       if (_aviso.isNotEmpty) ...[
         const SizedBox(height: 16),
@@ -411,7 +416,7 @@ class _CalibracionScreenState extends State<CalibracionScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Con el umbral fijo del cinturón, su postura neutral se marcó como '
+                'Con el umbral fijo del polerón, su postura neutral se marcó como '
                 'mala postura el $pct % del tiempo.'
                 '${alerta ? ' El umbral fijo no calza con su postura: dato para justificar la calibración.' : ''}',
                 style: Textos.cuerpo,

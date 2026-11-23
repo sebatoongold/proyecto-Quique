@@ -1,13 +1,13 @@
 // ============================================================
 // servicio_cinturon.dart
 // Fecha: 19-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v2 — paso F7.3
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v3 — paso G5
 //
-// CAMBIOS v2 respecto a la v1:
-//  - Sincroniza cada 30 s (antes 120 s) mientras hay conexión: ahora el
-//    Resumen de hoy y la línea de tiempo salen de la cola, y deben
-//    sentirse al día.
+// CAMBIOS v3 respecto a la v2:
+//  - Textos visibles: "cinturón" pasa a "polerón" (la prenda del
+//    sistema). Los nombres internos (clases, claves guardadas) no
+//    cambian, para no perder datos.
 //
 // Dos trabajos:
 //
@@ -189,7 +189,7 @@ class ServicioCinturon {
 
   Future<int> _sincronizar() async {
     if (!_ble.tieneRegistro) {
-      estado.value = 'Sin conexión con el cinturón';
+      estado.value = 'Sin conexión con el polerón';
       return -1;
     }
     estado.value = 'Sincronizando…';
@@ -199,7 +199,7 @@ class ServicioCinturon {
     for (var tanda = 0; tanda < maximoTandas; tanda++) {
       final texto = await _ble.leerRegistro();
       if (texto == null) {
-        estado.value = 'No se pudo leer el cinturón';
+        estado.value = 'No se pudo leer el polerón';
         return nuevos > 0 ? nuevos : -1;
       }
       Map<String, dynamic>? leido;
@@ -321,8 +321,8 @@ class ServicioCinturon {
     asignacionPendiente.value = false;
     await _sincronizar();
     estado.value = idCal != 0
-        ? 'Cinturón con la calibración de ${p!.codigo}'
-        : 'Cinturón con el umbral fijo${p == null ? '' : ' (${p.codigo})'}';
+        ? 'Polerón con la calibración de ${p!.codigo}'
+        : 'Polerón con el umbral fijo${p == null ? '' : ' (${p.codigo})'}';
     return true;
   }
 
@@ -330,7 +330,7 @@ class ServicioCinturon {
   /// las pruebas antes del testeo.
   Future<bool> vaciarCinturon() => _enOrden(() async {
         final ok = await _ble.escribirComando('BORRAR_TODO');
-        if (ok) estado.value = 'Cola del cinturón vaciada';
+        if (ok) estado.value = 'Cola del polerón vaciada';
         return ok;
       });
 

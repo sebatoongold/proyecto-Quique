@@ -1,15 +1,13 @@
 // ============================================================
 // configuracion_screen.dart
 // Fecha: 19-10-2026
-// Proyecto: "La espalda no espera" — app Quique
-// Versión: v10 — paso F9.2
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v11 — paso G5
 //
-// CAMBIOS v10 respecto a la v9:
-//  - Testeo → QUIZ: dos botones, "Antes de jugar" y "Después de jugar",
-//    con ✓ cuando el participante activo ya lo completó (si se toca uno
-//    hecho, pregunta antes de repetirlo). Abre la pantalla del quiz en
-//    el mundo del niño.
-//  - Nueva herramienta "Datos de prueba: quiz".
+// CAMBIOS v11 respecto a la v10:
+//  - Textos visibles: "cinturón" pasa a "polerón" (la prenda del
+//    sistema). Los nombres internos (clases, claves guardadas) no
+//    cambian, para no perder datos.
 //
 // Sección "Testeo": participante activo (crear, elegir, exportar).
 //
@@ -118,7 +116,7 @@ class ConfiguracionScreen extends StatelessWidget {
                 builder: (context, estado, _) => _opcion(
                   context,
                   icono: Icons.sync_rounded,
-                  titulo: 'Cinturón',
+                  titulo: 'Polerón',
                   subtitulo: estado,
                   destino: const CinturonScreen(),
                 ),
@@ -149,7 +147,7 @@ class ConfiguracionScreen extends StatelessWidget {
                 context,
                 icono: Icons.sensors_rounded,
                 titulo: 'Datos del sensor',
-                subtitulo: 'Valores en vivo del cinturón',
+                subtitulo: 'Valores en vivo del polerón',
                 destino: const PosturaScreen(),
               ),
               const SizedBox(height: 10),
@@ -188,7 +186,7 @@ class ConfiguracionScreen extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
-                  'Próximamente: vinculación del cinturón, recalibrar, editar perfil y ayuda.',
+                  'Próximamente: vinculación del polerón, recalibrar, editar perfil y ayuda.',
                   style: Textos.secundario,
                 ),
               ),

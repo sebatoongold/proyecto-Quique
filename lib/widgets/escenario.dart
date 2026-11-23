@@ -1,8 +1,13 @@
 // ============================================================
 // escenario.dart
 // Fecha: 23-11-2026
-// Proyecto: "La espalda no espera" — app Sóma
-// Versión: v1 — paso G3 (historia y experiencia)
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v2 — paso G5
+//
+// CAMBIOS v2 respecto a la v1:
+//  - El ocre del desierto y el mar toman los colores de PAISAJE de la
+//    paleta ajustada (Colores.ocre, Colores.agua). Los demás tonos del
+//    paisaje vienen de colores.dart, que ya apunta a la paleta nueva.
 //
 // El PAISAJE de cada lugar del viaje, dibujado con figuras geométricas
 // planas (cielo, cerros, estrellas, mar…), con Sóma y, si corresponde,
@@ -97,11 +102,11 @@ class _PintorPaisaje extends CustomPainter {
   // Colores de los paisajes (además de los de la app).
   static const _noche = Color(0xFF2B3A55);
   static const _nocheProfunda = Color(0xFF1E2A40);
-  static const _ocre = Color(0xFFC9A46B);
+  static const _ocre = Colores.ocre; // G5: de la paleta (paisaje)
   static const _ocreOscuro = Color(0xFFA8844F);
   static const _roca = Color(0xFF8C8F94);
   static const _nieve = Color(0xFFF3F1EC);
-  static const _mar = Color(0xFF5E93BD);
+  static const _mar = Colores.agua; // G5: de la paleta (paisaje)
   static const _lago = Color(0xFF7FB0D0);
 
   @override

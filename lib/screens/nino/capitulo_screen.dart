@@ -1,8 +1,11 @@
 // ============================================================
 // capitulo_screen.dart
 // Fecha: 23-11-2026
-// Proyecto: "La espalda no espera" — app Sóma
-// Versión: v1 — paso G3 (historia y experiencia)
+// Proyecto: "La espalda no espera" — app Kineo Sóma
+// Versión: v2 — paso G5
+//
+// CAMBIOS v2 respecto a la v1:
+//  - Las viñetas usan el estilo Textos.fraseSoma.
 //
 // Un CAPÍTULO de la historia, viñeta por viñeta (modelos/historia.dart):
 //  - Arriba, el escenario del lugar con Sóma (y el animal cuando aparece).
@@ -124,7 +127,7 @@ class _CapituloScreenState extends State<CapituloScreen> {
                       border: Border.all(color: Colores.linea),
                     ),
                     child: Text(_escena.texto,
-                        style: const TextStyle(fontSize: 18, height: 1.3, fontWeight: FontWeight.w600, color: Colores.azul)),
+                        style: Textos.fraseSoma),
                   ),
                   if (esFoto && !_tieneFoto && _c.animal != null) ...[
                     const SizedBox(height: 8),
